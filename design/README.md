@@ -8,6 +8,6 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 
 | ID | Screen | Status | Purpose | Tickets | Updated |
 | --- | --- | --- | --- | --- | --- |
-| S01 | [Popup](screens/S01-popup/screen.html) (+6 states) · [spec](screens/S01-popup/spec.md) | draft | Send a scan (typed, dropped image or saved code) into the focused field of the current tab | none yet |  |
-| S02 | [Welcome and debugging bar explanation](screens/S02-welcome/screen.html) · [spec](screens/S02-welcome/spec.md) | draft | Explain, before the first scan, why Chrome shows a debugging bar and how to scan safely | none yet |  |
-| S03 | [Settings](screens/S03-settings/screen.html) (+1 states) · [spec](screens/S03-settings/spec.md) | draft | Set how scans are typed, which sites are allowed, and the saved codes | none yet |  |
+| S01 | [Popup](screens/S01-popup/screen.html) (+6 states) · [spec](screens/S01-popup/spec.md) | draft | Send a scan (typed, dropped image or saved code) into the focused field of the current tab | none yet | 2026-11-12 |
+| S02 | [Welcome and debugging bar explanation](screens/S02-welcome/screen.html) · [spec](screens/S02-welcome/spec.md) | draft | Explain, before the first scan, why Chrome shows a debugging bar and how to scan safely | none yet | 2026-11-12 |
+| S03 | [Settings](screens/S03-settings/screen.html) (+1 states) · [spec](screens/S03-settings/spec.md) | draft | Set how scans are typed, which sites are allowed, and the saved codes | none yet | 2026-11-12 |
