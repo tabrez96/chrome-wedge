@@ -14,7 +14,23 @@ Developers and QA who test barcode-driven web apps (POS, warehouse, inventory) h
 
 ## Stack
 <!-- stack -->
-_Not decided yet. The architect picks it in the technical design; this fills in when you approve it._
+| Layer | Choice | Reason |
+|---|---|---|
+| Language | TypeScript (strict) | The Chrome debugger protocol calls are untyped strings; types catch mistakes in the keystroke code. |
+| Build | Vite, multi-page build (popup, welcome, settings, service worker) | Standard, fast, no framework needed; outputs a plain `dist/` that loads unpacked. |
+| UI | Vanilla DOM + one shared `tokens.css` | Three small screens; a framework would be more code than the screens. |
+| Extension platform | Manifest V3, `minimum_chrome_version: "118"` | Required by the Web Store. From 118 an active `chrome.debugger` session keeps the service worker alive. |
+| Keystrokes | `chrome.debugger` + Chrome DevTools Protocol `Input.dispatchKeyEvent` | The only way an extension can send trusted (`isTrusted: true`) key events. |
+| Barcode decoding | `@zxing/library` (pure JS) | Proven, reads Code 128 / EAN-13 / UPC-A; no WebAssembly, so no CSP exception in the manifest. |
+| Storage | `chrome.storage.local` (settings), `chrome.storage.session` (per-tab state) | Built in, nothing to host. `local` over `sync`: no quota errors and no surprise cross-device syncing. |
+| Unit tests | Vitest + jsdom | Same config as Vite; jsdom covers the page-side focus probe. |
+| End-to-end tests | Playwright (Chromium, extension loaded from `dist/`) | Can load an unpacked extension and check `event.isTrusted` on a fixture page. |
+| Type check | `tsc --noEmit` | Vite strips types without checking them. |
+| Formatter | Prettier (defaults), check `prettier --check .` | Handbook default for TypeScript, HTML, CSS, JSON, Markdown. |
+| CI | GitHub Actions: format check, type check, unit tests, build, e2e | Runs on every pull request into `develop`. |
+| Hosting | Chrome Web Store (manual upload of the built zip) | It is an extension; there is no server. |
+
+Permissions: `debugger`, `storage`, `activeTab`. No host permissions and no content scripts: everything that touches the page goes through the debugger session on the tab the user switched on.
 <!-- /stack -->
 
 ## How we work here
