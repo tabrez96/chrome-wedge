@@ -22,7 +22,7 @@ Developers and QA testing barcode-driven web apps (point of sale, warehouse, inv
 Rules: a scan is only sent to the focused editable element of the tab the user switched on, on an allowed site, and never to `input[type=password]`. Nothing is sent from an image until the user presses Scan.
 
 ## Design system
-**Theme**: dark only. Every screen (popup, welcome, settings) uses the same dark palette; it sits naturally beside Chrome's dark toolbar and keeps the red cursor as the one bright accent.
+**Theme**: dark only. Every screen (popup, welcome, settings) uses the same dark palette; it sits naturally beside Chrome's dark toolbar and keeps the red cursor as the one bright accent. Buttons are light, not red, so red never competes with the mark or reads as an error.
 
 **Colours**
 | Token | Hex | Use |
@@ -34,13 +34,13 @@ Rules: a scan is only sent to the focused editable element of the tab the user s
 | border | #2A3552 | dividers, inputs at rest, secondary buttons and the selected step badge |
 | border-strong | #3E4A6B | dashed drop zone, settings fields, switch off |
 | row-divider | #222B45 | lines between list rows |
-| laser | #E0393E | the mark's cursor bar, accents (not text) |
-| laser-strong | #C62F34 | primary buttons with white text (5.4:1) |
+| laser | #E0393E | the mark's cursor bar, small accents such as the typing caret (never button fills, never text) |
+| primary | #E8ECF5 fill, #0E1426 text (15:1); hover #FFFFFF | primary buttons |
 | focus | #FF6B5E | 2px focus ring |
 | success | #6EE0A6 on #0F2E22 (edge #1F5A3F) | sent, site on; switch on #23A86A |
 | warning | #F5C46B on #33250D | no field, detached |
 | error | #FF9A9C on #3A1619 | refused, unreadable, Remove/Delete links |
-| disabled | #6B7591 text, #4A2A31 primary button | site off |
+| disabled | #6B7591 text on #2A3552 (primary button) | site off |
 
 A dropped barcode thumbnail stays black on white: it shows the image as it is.
 
@@ -48,14 +48,14 @@ A dropped barcode thumbnail stays black on white: it shows the image as it is.
 
 **Spacing**: 4px base; 12/16px popup padding; 8–10px radii on controls, 14–16px on cards.
 
-**Components**: primary button (laser-strong, white text, 40px tall in popup); secondary button (border fill, text colour); site switch (green on, border-strong off, white knob); dashed drop zone; result line (icon + bold summary + detail); saved-code row with `kbd` shortcut; segmented control (suffix; selected segment is text-coloured with bg-coloured text).
+**Components**: primary button (light fill #E8ECF5 with ink text #0E1426, 40px tall in popup; one per screen); secondary button (border fill, text colour); site switch (green on, border-strong off, white knob); dashed drop zone; result line (icon + bold summary + detail); saved-code row with `kbd` shortcut; segmented control (suffix; selected segment is text-coloured with bg-coloured text).
 
 **Tone of voice**: short, plain, scanner vocabulary ("scan", "prefix", "ends with Enter"). Tell the user what happened and what to do next; no blame, no jargon like "CDP" or "debugger attached" in the popup.
 
 **Logo**: barcode bars that end in a tall red text cursor: a scan turning into typing. Modern flat style: three white bars of barcode widths (9/4/7 of 64), equal height with nearly square ends so they read as a barcode and not an audio meter, then a pill-shaped cursor with a coral-to-laser gradient that stands taller than the bars. All on a squircle tile (radius 18/64) with a deep ink gradient (#2A3A66 to #0E1526) and a faint white edge so it holds on dark toolbars. Only four shapes, so it reads at 16px. `mark.svg` is also the app icon. `logo.svg` is the mark beside "chrome-wedge" in heavy system sans (800, tight tracking) with a red hyphen. Use the mark alone in the popup header and as the icon; the full logo on the store page and S02. Don't recolour the cursor or place the mark without its tile. `logo.svg` has an ink (#16213A) wordmark for light backgrounds such as the store listing; on the product's dark screens the wordmark is set in text colour (#E8ECF5), and the red hyphen stays.
 
 ## Accessibility
-- Text contrast at least 4.5:1 on the dark surfaces (see the colour table). White on #E0393E is only 4.4:1, so buttons use #C62F34 (5.4:1).
+- Text contrast at least 4.5:1 on the dark surfaces (see the colour table). Primary buttons are ink #0E1426 on #E8ECF5 (15:1). Red is kept off buttons and text so the logo's cursor stays the one red thing.
 - Every focusable control shows a 2px #FF6B5E focus ring; the dark theme never relies on the browser's default ring.
 - Popup focus order: site switch → code input (autofocus) → Scan → drop zone (Enter/Space opens file picker) → saved code Scan buttons → Edit → Help → settings.
 - Site switch is a `role="switch"` with `aria-checked`; results announce via `role="status"`/`role="alert"`.

@@ -33,3 +33,4 @@ size: 380x600
 - Created for the first UX.
 - Header mark updated to the modernised logo (rounded bars, gradient tile, glowing cursor), as requested in review.
 - Dark theme throughout (all states), header wordmark set like the logo, header mark synced with mark.svg; requested in review.
+- Primary button changed from red to a light fill with ink text, so red stays on the logo's cursor only; requested in review.
