@@ -25,7 +25,7 @@ Rules: a scan is only sent to the focused editable element of the tab the user s
 **Colours**
 | Token | Hex | Use |
 |---|---|---|
-| ink | #16213A | text, primary dark surfaces, mark tile |
+| ink | #16213A | text, primary dark surfaces (mark tile is a gradient #2A3A66 → #0E1526) |
 | laser | #E0393E | the mark's cursor bar, accents (not text) |
 | laser-strong | #C62F34 | primary buttons with white text (5.4:1) |
 | muted | #5B6478 | secondary text |
@@ -44,7 +44,7 @@ Rules: a scan is only sent to the focused editable element of the tab the user s
 
 **Tone of voice**: short, plain, scanner vocabulary ("scan", "prefix", "ends with Enter"). Tell the user what happened and what to do next; no blame, no jargon like "CDP" or "debugger attached" in the popup.
 
-**Logo**: a barcode whose bars shrink into a wedge and end in a tall red text cursor: a scan turning into typing. `mark.svg` is the bars on an ink rounded tile, so it reads on light and dark toolbars and at 16px; it is also the app icon. `logo.svg` is the mark beside "chrome-wedge" in bold monospace with a red hyphen. Use the mark alone in the popup header and as the icon; the full logo on the store page and S02. Don't recolour the cursor bar or place the mark without its tile.
+**Logo**: barcode bars that end in a tall red text cursor: a scan turning into typing. Modern flat style: three white bars of barcode widths (9/4/7 of 64), equal height with nearly square ends so they read as a barcode and not an audio meter, then a pill-shaped cursor with a coral-to-laser gradient that stands taller than the bars. All on a squircle tile (radius 18/64) with a deep ink gradient (#2A3A66 to #0E1526) and a faint white edge so it holds on dark toolbars. Only four shapes, so it reads at 16px. `mark.svg` is also the app icon. `logo.svg` is the mark beside "chrome-wedge" in heavy system sans (800, tight tracking) with a red hyphen. Use the mark alone in the popup header and as the icon; the full logo on the store page and S02. Don't recolour the cursor or place the mark without its tile.
 
 ## Accessibility
 - Text contrast at least 4.5:1. White on #E0393E is only 4.4:1, so buttons use #C62F34 (5.4:1).

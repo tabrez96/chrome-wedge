@@ -21,3 +21,4 @@ size: 1280x800
 
 ## Change log
 - Created for the first UX.
+- Header mark updated to the modernised logo (rounded bars, gradient tile, glowing cursor), as requested in review.
