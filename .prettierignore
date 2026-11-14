@@ -1,0 +1,8 @@
+dist
+coverage
+test-results
+playwright-report
+public/icons
+package-lock.json
+design
+.dmi
