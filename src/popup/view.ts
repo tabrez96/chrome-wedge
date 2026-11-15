@@ -1,5 +1,10 @@
 import type { ScanResult, SessionReply, TabStatus } from "../core/messages";
-import { MAX_SCAN_LENGTH, type Suffix } from "../core/settings";
+import {
+  MAX_SCAN_LENGTH,
+  type BarcodeFormat,
+  type Suffix,
+} from "../core/settings";
+import { FORMAT_NAMES } from "./image";
 
 export type Tone = "success" | "warning" | "error";
 export type ResultLine = {
@@ -8,12 +13,19 @@ export type ResultLine = {
   detail: string;
   reconnect: boolean;
 };
+export type ImageCard = {
+  thumbUrl: string;
+  format: BarcodeFormat;
+  value: string;
+  fileName: string;
+};
 export type PopupView = {
   status: TabStatus;
   busy: boolean; // a scan is in flight
   result: ResultLine | null;
   suffix: Suffix;
   keyDelayMs: number;
+  image: ImageCard | null;
 };
 
 export const SUFFIX_NAMES: Record<Suffix, string> = {
@@ -91,6 +103,34 @@ export function describeSessionError(
   return line("error", "Couldn't switch on", reply.message);
 }
 
+export type ImageOutcome =
+  | { kind: "decoded" }
+  | { kind: "unreadable"; fileName: string }
+  | { kind: "unsupported"; fileName: string };
+
+export function describeImage(o: ImageOutcome): ResultLine {
+  switch (o.kind) {
+    case "decoded":
+      return line(
+        "success",
+        "Ready to scan",
+        "Press Scan or Enter to type it.",
+      );
+    case "unreadable":
+      return line(
+        "error",
+        `No barcode found in ${o.fileName}`,
+        "Try a sharper, straight-on image. QR codes aren't supported yet.",
+      );
+    case "unsupported":
+      return line(
+        "error",
+        `Can't open ${o.fileName}`,
+        "Choose a PNG, JPEG or WebP image.",
+      );
+  }
+}
+
 const ICONS: Record<Tone, string> = { success: "✓", warning: "!", error: "×" };
 
 export function render(doc: Document, view: PopupView): void {
@@ -132,6 +172,17 @@ export function render(doc: Document, view: PopupView): void {
     $(".result-detail").textContent = shown.detail;
     $(".result-detail").hidden = shown.detail === "";
     $(".result-action").hidden = !shown.reconnect;
+  }
+
+  const { image } = view;
+  $("#drop").dataset.card = String(image !== null);
+  $("#drop-empty").hidden = image !== null;
+  $("#drop-card").hidden = image === null;
+  if (image) {
+    $<HTMLImageElement>("#drop-thumb").src = image.thumbUrl;
+    $("#drop-format").textContent = `${FORMAT_NAMES[image.format]} found`;
+    $("#drop-value").textContent = image.value;
+    $("#drop-file").textContent = image.fileName;
   }
 
   const name = SUFFIX_NAMES[view.suffix];

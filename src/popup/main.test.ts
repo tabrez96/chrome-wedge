@@ -2,10 +2,13 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PopupMessage } from "../core/messages";
+import { PNG } from "pngjs";
 import { initPopup, type PopupApi } from "./main";
 
 const html = readFileSync("popup.html", "utf8");
 beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => "blob:thumb");
+  URL.revokeObjectURL = vi.fn();
   document.body.innerHTML = new DOMParser().parseFromString(
     html,
     "text/html",
@@ -21,9 +24,34 @@ const sentReply = {
   label: "Item code",
 };
 
+const pngPixels = (name: string) => {
+  const { data, width, height } = PNG.sync.read(
+    readFileSync(`test/fixtures/barcodes/${name}`),
+  );
+  return { data: new Uint8ClampedArray(data), width, height };
+};
+let current = "";
+const readFixture: PopupApi["readPixels"] = async () => pngPixels(current);
+const settings =
+  (defaultFormat = "code128") =>
+  async () => ({
+    suffix: "enter" as const,
+    keyDelayMs: 10,
+    defaultFormat,
+  });
+const fileOf = (name: string, type = "image/png") =>
+  new File(["x"], name, { type });
+const dropFile = (file: File) => {
+  current = file.name;
+  const e = new Event("drop", { cancelable: true });
+  Object.defineProperty(e, "dataTransfer", { value: { files: [file] } });
+  q("#drop").dispatchEvent(e);
+};
+
 async function open(
   state: "off" | "attached" | "detached" = "attached",
   scanReply: unknown = sentReply,
+  opts: { defaultFormat?: string; readPixels?: PopupApi["readPixels"] } = {},
 ) {
   const send = vi.fn(async (msg: PopupMessage) => {
     if (msg.type === "scan") return scanReply;
@@ -39,7 +67,8 @@ async function open(
   const api = {
     tabId: async () => 7,
     send,
-    settings: async () => ({ suffix: "enter" as const, keyDelayMs: 10 }),
+    settings: settings(opts.defaultFormat),
+    readPixels: opts.readPixels ?? readFixture,
     openHelp: vi.fn(),
     openSettings: vi.fn(),
   } as unknown as PopupApi;
@@ -152,10 +181,135 @@ describe("initPopup", () => {
     await initPopup(document, {
       tabId: async () => 7,
       send,
-      settings: async () => ({ suffix: "enter" as const, keyDelayMs: 10 }),
+      settings: settings(),
+      readPixels: readFixture,
       openHelp: vi.fn(),
       openSettings: vi.fn(),
     } as unknown as PopupApi);
     expect(q("#result").textContent).toContain("no worker");
+  });
+});
+
+describe("image drop", () => {
+  const fixture = (name: string, type = "image/png") => {
+    current = name;
+    return fileOf(name, type);
+  };
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  const drop = async (file: File) => {
+    dropFile(file);
+    await flush();
+  };
+
+  it("dropping a fixture barcode fills the input and shows the card, and sends nothing until Scan", async () => {
+    const { send } = await open();
+    await drop(fixture("code128-clean.png"));
+    expect(q<HTMLInputElement>("#code").value).toBe("WEDGE-12345");
+    expect(q("#drop-card").hidden).toBe(false);
+    expect(q("#drop-empty").hidden).toBe(true);
+    expect(q("#drop-format").textContent).toBe("Code 128 found");
+    expect(q("#drop-file").textContent).toBe("code128-clean.png");
+    expect(q(".result-summary").textContent).toBe("Ready to scan");
+    expect(q("#result").getAttribute("role")).toBe("status");
+    expect(types(send)).not.toContain("scan");
+    q("#scan").click();
+    await vi.waitFor(() => expect(types(send)).toContain("scan"));
+    expect(send).toHaveBeenCalledWith({
+      type: "scan",
+      tabId: 7,
+      value: "WEDGE-12345",
+    });
+  });
+
+  it("a non-barcode image shows unreadable", async () => {
+    await open();
+    await drop(fixture("not-barcode-noise.png"));
+    expect(q("#result").getAttribute("role")).toBe("alert");
+    expect(q(".result-summary").textContent).toBe(
+      "No barcode found in not-barcode-noise.png",
+    );
+    expect(q("#drop-card").hidden).toBe(true);
+    expect(q<HTMLInputElement>("#code").value).toBe("");
+  });
+
+  it("unsupported or unreadable files show can't open", async () => {
+    const readPixels = vi.fn(async () => {
+      throw new Error("bad image");
+    });
+    await open("attached", sentReply, { readPixels });
+    await drop(fixture("a.gif", "image/gif"));
+    expect(q(".result-summary").textContent).toBe("Can't open a.gif");
+    expect(readPixels).not.toHaveBeenCalled();
+    await drop(fixture("broken.png"));
+    expect(q(".result-summary").textContent).toBe("Can't open broken.png");
+  });
+
+  it("click, Enter and Space on the drop zone open the picker", async () => {
+    await open();
+    const click = vi
+      .spyOn(HTMLInputElement.prototype, "click")
+      .mockImplementation(() => {});
+    q("#drop").click();
+    for (const key of ["Enter", " "])
+      q("#drop").dispatchEvent(new KeyboardEvent("keydown", { key }));
+    expect(click).toHaveBeenCalledTimes(3);
+    click.mockRestore();
+  });
+
+  it("choosing a file through the picker decodes it", async () => {
+    await open();
+    Object.defineProperty(q("#file"), "files", {
+      value: [fixture("code128-clean.png")],
+    });
+    q("#file").dispatchEvent(new Event("change"));
+    await flush();
+    expect(q<HTMLInputElement>("#code").value).toBe("WEDGE-12345");
+  });
+
+  it("editing the input clears the card", async () => {
+    await open();
+    await drop(fixture("code128-clean.png"));
+    q<HTMLInputElement>("#code").value = "other";
+    q("#code").dispatchEvent(new Event("input"));
+    expect(q("#drop-card").hidden).toBe(true);
+    expect(q("#result").hidden).toBe(true);
+  });
+
+  it("typing while an image is still reading keeps the typed code", async () => {
+    let finish!: () => void;
+    const gate = new Promise<void>((r) => (finish = r));
+    const readPixels = () => gate.then(() => pngPixels("code128-clean.png"));
+    await open("attached", sentReply, { readPixels });
+    dropFile(fixture("code128-clean.png"));
+    q<HTMLInputElement>("#code").value = "typed";
+    q("#code").dispatchEvent(new Event("input"));
+    finish();
+    await flush();
+    expect(q<HTMLInputElement>("#code").value).toBe("typed");
+  });
+
+  it.each([
+    [sentReply, "Ready to scan"],
+    [{ kind: "detached" }, "Typing stopped: the debugging bar was closed"],
+  ])(
+    "an image chosen while a scan is pending keeps its card (%#)",
+    async (reply, summary) => {
+      const { send } = await open();
+      let finish!: (r: unknown) => void;
+      send.mockImplementationOnce(() => new Promise((r) => (finish = r)));
+      q<HTMLInputElement>("#code").value = "123";
+      q("#scan").click();
+      await drop(fixture("code128-clean.png"));
+      finish(reply);
+      await flush();
+      expect(q("#drop-card").hidden).toBe(false);
+      expect(q(".result-summary").textContent).toBe(summary);
+    },
+  );
+
+  it("passes the default format to the decoder", async () => {
+    await open("attached", sentReply, { defaultFormat: "ean13" });
+    await drop(fixture("upca-clean.png"));
+    expect(q("#drop-format").textContent).toBe("EAN-13 found");
   });
 });
