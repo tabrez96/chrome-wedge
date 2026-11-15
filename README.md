@@ -31,7 +31,7 @@ Set how scans are typed, which sites are allowed, and the saved codes
 - Setup: `npm install`, `npx playwright install chromium`.
 - Build: `npm run build` (output in `dist/`), `npm run dev` (rebuild on change).
 - Load unpacked: open `chrome://extensions`, turn on Developer mode, choose Load unpacked, pick `dist/`. After a rebuild, press the reload icon on the extension card.
-- Checks: `npm run format:check`, `npm run typecheck`, `npm test`, `npm run build && npm run e2e`. `npm run format` fixes formatting.
+- Checks: `npm run format:check`, `npm run typecheck`, `npm test` (unit tests with coverage; fails under 90% on `src/core/`), `npm run build && npm run e2e`. `npm run format` fixes formatting.
 - Icons: `npm run icons` regenerates `public/icons/` from `design/brand/mark.svg`.
 
 ---
