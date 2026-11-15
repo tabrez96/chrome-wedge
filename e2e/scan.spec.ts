@@ -16,6 +16,18 @@ const keys = (p: Page) =>
   p.evaluate(() => (window as unknown as { keys: Key[] }).keys);
 const names = async (p: Page) => (await keys(p)).map((k) => k.key);
 
+const attached = (ext: Page, id: number) =>
+  ext.evaluate(
+    (id) =>
+      chrome.debugger
+        .sendCommand({ tabId: id }, "Runtime.evaluate", { expression: "1" })
+        .then(
+          () => true,
+          () => false,
+        ),
+    id,
+  );
+
 async function setup(context: BrowserContext, extensionId: string) {
   const page = await context.newPage();
   await page.goto(FIXTURE);
@@ -139,4 +151,31 @@ test("two scans on one tab never interleave", async ({
   const a = "1,1,1,1,Enter";
   const b = "2,2,2,2,Enter";
   expect([`${a},${b}`, `${b},${a}`]).toContain(got);
+});
+
+test("navigating a switched-on tab to another host detaches it and a scan returns site-off", async ({
+  context,
+  extensionId,
+}) => {
+  const t = await setup(context, extensionId);
+  await t.page.goto(OTHER);
+  await expect
+    .poll(() => t.send({ type: "session-get", tabId: t.pageId }))
+    .toMatchObject({ ok: true, status: { state: "off" } });
+  expect(await attached(t.ext, t.pageId)).toBe(false);
+  expect(await t.scan("1")).toEqual({ kind: "site-off" });
+  expect(await keys(t.page)).toEqual([]);
+});
+
+test("navigating within the same host keeps the tab on", async ({
+  context,
+  extensionId,
+}) => {
+  const t = await setup(context, extensionId);
+  await t.page.goto(FIXTURE + "next");
+  expect(await t.send({ type: "session-get", tabId: t.pageId })).toEqual({
+    ok: true,
+    status: { state: "attached", host: "wedge.test" },
+  });
+  expect(await t.scan("1")).toMatchObject({ kind: "sent" });
 });
