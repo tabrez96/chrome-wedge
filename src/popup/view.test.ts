@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  describeImage,
   describeResult,
   describeSessionError,
   render,
@@ -22,6 +23,7 @@ const base: PopupView = {
   result: null,
   suffix: "enter",
   keyDelayMs: 10,
+  image: null,
 };
 const q = (s: string) => document.querySelector(s) as HTMLElement;
 const sent = {
@@ -213,12 +215,15 @@ describe("render", () => {
 });
 
 describe("markup", () => {
-  it("keeps focus order switch → code → scan → reconnect → help → settings", () => {
-    const els = [...document.querySelectorAll("button, input")];
+  it("keeps focus order switch → code → scan → drop → reconnect → help → settings", () => {
+    const els = [
+      ...document.querySelectorAll("button, input:not([hidden]), #drop"),
+    ];
     expect(els.map((e) => e.id)).toEqual([
       "switch",
       "code",
       "scan",
+      "drop",
       "reconnect",
       "help",
       "settings",
@@ -227,5 +232,23 @@ describe("markup", () => {
       true,
     );
     expect(q("#switch").getAttribute("role")).toBe("switch");
+  });
+});
+
+describe("describeImage", () => {
+  it.each([
+    [{ kind: "decoded" }, "Ready to scan", "Press Scan or Enter to type it."],
+    [
+      { kind: "unreadable", fileName: "a.png" },
+      "No barcode found in a.png",
+      "Try a sharper, straight-on image. QR codes aren't supported yet.",
+    ],
+    [
+      { kind: "unsupported", fileName: "a.gif" },
+      "Can't open a.gif",
+      "Choose a PNG, JPEG or WebP image.",
+    ],
+  ] as const)("describes %j", (outcome, summary, detail) => {
+    expect(describeImage(outcome)).toMatchObject({ summary, detail });
   });
 });

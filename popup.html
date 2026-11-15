@@ -55,6 +55,35 @@
         Types into the focused field, then presses
         <kbd id="hint-suffix">Enter</kbd>.
       </p>
+      <div
+        id="drop"
+        class="drop"
+        role="button"
+        tabindex="0"
+        aria-label="Drop a barcode image or choose a file"
+      >
+        <div id="drop-empty" class="drop-empty">
+          <p>
+            <strong>Drop a barcode image</strong> or
+            <span class="drop-link">choose a file</span>
+          </p>
+          <p class="drop-formats">Code 128, EAN-13, UPC-A</p>
+        </div>
+        <div id="drop-card" class="drop-card" hidden>
+          <img id="drop-thumb" class="drop-thumb" alt="" />
+          <div>
+            <p id="drop-format" class="drop-format"></p>
+            <p id="drop-value" class="drop-value"></p>
+            <p id="drop-file" class="drop-file"></p>
+          </div>
+        </div>
+      </div>
+      <input
+        id="file"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        hidden
+      />
       <div id="result" class="result" hidden>
         <span class="result-icon" aria-hidden="true"></span>
         <div>
