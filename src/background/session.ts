@@ -1,6 +1,7 @@
 import { hostOfUrl } from "../core/hosts";
 import {
   isPopupMessage,
+  type ScanResult,
   type SessionReply,
   type TabStatus,
 } from "../core/messages";
@@ -8,16 +9,29 @@ import { defaultSettings, migrate, type Settings } from "../core/settings";
 
 export const PROTOCOL_VERSION = "1.3";
 export const SETTINGS_KEY = "settings";
-type Stored = { state: "attached" | "detached"; host: string | null };
+type Stored = {
+  state: "attached" | "detached";
+  host: string | null;
+  lastResult?: ScanResult;
+};
 const tabKey = (tabId: number) => `tab:${tabId}`;
 
-async function readTab(tabId: number): Promise<Stored | null> {
+export async function readTab(tabId: number): Promise<Stored | null> {
   const got = await chrome.storage.session.get(tabKey(tabId));
   return (got[tabKey(tabId)] as Stored | undefined) ?? null;
 }
 
 async function writeTab(tabId: number, s: Stored): Promise<void> {
   await chrome.storage.session.set({ [tabKey(tabId)]: s });
+}
+
+// Keeps the result on the tab's entry; does nothing if the tab was switched off meanwhile.
+export async function setLastResult(
+  tabId: number,
+  lastResult: ScanResult,
+): Promise<void> {
+  const s = await readTab(tabId);
+  if (s) await writeTab(tabId, { ...s, lastResult });
 }
 
 async function clearTab(tabId: number): Promise<void> {
@@ -33,6 +47,14 @@ export async function hostOfTab(tabId: number): Promise<string | null> {
 const isRecord = (x: unknown): x is Record<string, unknown> =>
   typeof x === "object" && x !== null && !Array.isArray(x);
 
+export async function readSettings(): Promise<Settings> {
+  const raw = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY];
+  return {
+    ...defaultSettings(),
+    ...migrate(isRecord(raw) ? raw : {}),
+  } as Settings;
+}
+
 // One update at a time, so two tabs can't overwrite each other's host.
 let queue: Promise<unknown> = Promise.resolve();
 const updateAllowedSites = (fn: (sites: string[]) => string[]) =>
@@ -41,11 +63,7 @@ const updateAllowedSites = (fn: (sites: string[]) => string[]) =>
 async function writeAllowedSites(
   fn: (sites: string[]) => string[],
 ): Promise<void> {
-  const raw = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY];
-  const current = {
-    ...defaultSettings(),
-    ...migrate(isRecord(raw) ? raw : {}),
-  } as Settings;
+  const current = await readSettings();
   await chrome.storage.local.set({
     [SETTINGS_KEY]: { ...current, allowedSites: fn(current.allowedSites) },
   });
@@ -63,7 +81,8 @@ export async function getTabStatus(tabId: number): Promise<TabStatus> {
 
 export async function switchOn(tabId: number): Promise<SessionReply> {
   const s = await readTab(tabId);
-  if (s?.state === "attached") return { ok: true, status: s };
+  if (s?.state === "attached")
+    return { ok: true, status: { state: s.state, host: s.host } };
   const host = await hostOfTab(tabId);
   if (host === null) {
     return {

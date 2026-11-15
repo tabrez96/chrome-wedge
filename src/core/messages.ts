@@ -15,11 +15,12 @@ export type PopupMessage =
   | { type: "session-off"; tabId: number }
   | { type: "scan"; tabId: number; value: string };
 
-// Reply to "scan". The scan ticket handles this. It is defined here so the popup and worker share one shape.
+// Reply to "scan" (handled by src/background/scan.ts). Shared by the popup and the worker.
 export type ScanResult =
   | { kind: "sent"; value: string; keys: number; suffix: Suffix; label: string }
   | { kind: "refused" } // focused field is a password field
   | { kind: "no-field" }
+  | { kind: "site-off" } // tab not switched on, or its current host is not allowed
   | { kind: "detached" }
   | { kind: "invalid"; error: ScanValueError }
   | { kind: "error"; message: string };
