@@ -17,6 +17,7 @@
     "@playwright/test": "^1.65.1",
     "@resvg/resvg-js": "^2.6.2",
     "@types/chrome": "^0.3.7",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
     "jsdom": "^31.0.1",
