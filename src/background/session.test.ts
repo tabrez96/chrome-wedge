@@ -7,7 +7,12 @@ function area() {
   const m = new Map<string, unknown>();
   return {
     m,
-    get: async (key: string) => (m.has(key) ? { [key]: m.get(key) } : {}),
+    get: async (key: string | null) =>
+      key === null
+        ? Object.fromEntries(m)
+        : m.has(key)
+          ? { [key]: m.get(key) }
+          : {},
     set: async (obj: Record<string, unknown>) => {
       for (const [k, v] of Object.entries(obj)) m.set(k, v);
     },
@@ -30,16 +35,28 @@ const tab = () => fake.storage.session.m.get("tab:7");
 
 let fake: ReturnType<typeof makeFake>;
 function makeFake() {
-  const l: { detach?: Listener; message?: Listener } = {};
+  const l: {
+    detach?: Listener;
+    message?: Listener;
+    event?: Listener;
+    changed?: Listener;
+    removed?: Listener;
+  } = {};
   return {
     l,
-    storage: { session: area(), local: area() },
+    storage: {
+      session: area(),
+      local: area(),
+      onChanged: { addListener: (f: Listener) => (l.changed = f) },
+    },
+    tabs: { onRemoved: { addListener: (f: Listener) => (l.removed = f) } },
     debugger: {
       attach: vi.fn(async (..._a: unknown[]) => {}),
       detach: vi.fn(async (..._a: unknown[]) => {}),
       sendCommand: vi.fn(async (..._a: unknown[]) => {}),
       getTargets: vi.fn(async () => [target("http://wedge.test/")]),
       onDetach: { addListener: (f: Listener) => (l.detach = f) },
+      onEvent: { addListener: (f: Listener) => (l.event = f) },
     },
     runtime: {
       id: "ext",
@@ -50,6 +67,20 @@ function makeFake() {
 
 const settings = () =>
   fake.storage.local.m.get("settings") as Record<string, unknown>;
+
+const nav = (url: string, extra: Record<string, unknown> = {}) =>
+  s.onDebuggerEvent({ tabId: 7 }, "Page.frameNavigated", {
+    frame: { id: "f", url, ...extra },
+  });
+const sitesChange = (
+  oldSites: string[] | undefined,
+  newSites: string[] | undefined,
+) => ({
+  settings: {
+    oldValue: oldSites && { version: 1, allowedSites: oldSites },
+    newValue: newSites && { version: 1, allowedSites: newSites },
+  },
+});
 
 beforeEach(() => {
   fake = makeFake();
@@ -68,6 +99,83 @@ describe("switchOn", () => {
     );
     expect(tab()).toEqual({ state: "attached", host: HOST });
     expect(settings().allowedSites).toEqual([HOST]);
+  });
+
+  it("enables the Page domain", async () => {
+    await s.switchOn(7);
+    expect(fake.debugger.sendCommand).toHaveBeenCalledWith(
+      { tabId: 7 },
+      "Page.enable",
+    );
+  });
+
+  it("Page.enable failure reports attach-failed and stores nothing", async () => {
+    fake.debugger.sendCommand
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("page"));
+    expect(await s.switchOn(7)).toEqual({
+      ok: false,
+      error: "attach-failed",
+      message: "page",
+    });
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+    expect(fake.storage.session.m.size).toBe(0);
+  });
+
+  it("detaches when the host was removed from settings while switching on", async () => {
+    fake.debugger.getTargets
+      .mockResolvedValueOnce([target("http://wedge.test/")])
+      .mockImplementationOnce(async () => {
+        fake.storage.local.m.set("settings", { version: 1, allowedSites: [] });
+        return [target("http://wedge.test/")];
+      });
+    expect(await s.switchOn(7)).toEqual({
+      ok: false,
+      error: "attach-failed",
+      message: "The page navigated while switching on.",
+    });
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+    expect(fake.storage.session.m.has("tab:7")).toBe(false);
+  });
+
+  it("detaches when the page navigated to a disallowed host while switching on", async () => {
+    fake.debugger.getTargets
+      .mockResolvedValueOnce([target("http://wedge.test/")])
+      .mockResolvedValueOnce([target("http://other.test/")]);
+    expect(await s.switchOn(7)).toEqual({
+      ok: false,
+      error: "attach-failed",
+      message: "The page navigated while switching on.",
+    });
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+    expect(fake.storage.session.m.has("tab:7")).toBe(false);
+  });
+
+  it("detaches when the page became non-web while switching on", async () => {
+    fake.debugger.getTargets
+      .mockResolvedValueOnce([target("http://wedge.test/")])
+      .mockResolvedValueOnce([target("chrome://newtab/")]);
+    expect((await s.switchOn(7)).ok).toBe(false);
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+  });
+
+  it("stores the new host when the page navigated to another allowed host while switching on", async () => {
+    fake.storage.local.m.set("settings", {
+      version: 1,
+      allowedSites: ["other.test"],
+    });
+    fake.debugger.getTargets
+      .mockResolvedValueOnce([target("http://wedge.test/")])
+      .mockResolvedValueOnce([target("http://other.test/")]);
+    expect(await s.switchOn(7)).toEqual({
+      ok: true,
+      status: { state: "attached", host: "other.test" },
+    });
+    expect(fake.debugger.detach).not.toHaveBeenCalled();
+    expect(fake.storage.session.m.get("tab:7")).toEqual({
+      state: "attached",
+      host: "other.test",
+    });
   });
 
   it("does not send lastResult in its reply", async () => {
@@ -180,6 +288,105 @@ describe("onDetach", () => {
   });
 });
 
+describe("onDebuggerEvent", () => {
+  it("main-frame navigation to a host that is not allowed detaches and clears the tab", async () => {
+    await s.switchOn(7);
+    await nav("http://other.test/");
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+    expect(tab()).toBeUndefined();
+    expect(settings().allowedSites).toEqual([HOST]);
+  });
+
+  it("navigation to a non-web page detaches", async () => {
+    await s.switchOn(7);
+    await nav("chrome://newtab/");
+    expect(tab()).toBeUndefined();
+  });
+
+  it("navigation to another allowed host stays on and updates the host", async () => {
+    await s.switchOn(7);
+    fake.storage.local.m.set("settings", {
+      version: 1,
+      allowedSites: [HOST, "other.test"],
+    });
+    await nav("http://other.test/x");
+    expect(fake.debugger.detach).not.toHaveBeenCalled();
+    expect(tab()).toEqual({ state: "attached", host: "other.test" });
+  });
+
+  it("same-host navigation and subframe navigation change nothing", async () => {
+    await s.switchOn(7);
+    await nav("http://wedge.test/next");
+    await nav("http://other.test/", { parentId: "p" });
+    expect(fake.debugger.detach).not.toHaveBeenCalled();
+    expect(tab()).toEqual({ state: "attached", host: HOST });
+  });
+
+  it("ignores other methods, unknown tabs, missing tabId and malformed params", async () => {
+    await s.onDebuggerEvent({ tabId: 7 }, "Page.loadEventFired", {});
+    await nav("http://other.test/");
+    await s.onDebuggerEvent({}, "Page.frameNavigated", {
+      frame: { id: "f", url: "http://other.test/" },
+    });
+    await s.onDebuggerEvent({ tabId: 7 }, "Page.frameNavigated");
+    await s.onDebuggerEvent({ tabId: 7 }, "Page.frameNavigated", {
+      frame: { id: "f" },
+    });
+    expect(fake.debugger.detach).not.toHaveBeenCalled();
+    expect(fake.storage.session.m.size).toBe(0);
+  });
+});
+
+describe("onSettingsChanged", () => {
+  const seed = () => {
+    const m = fake.storage.session.m;
+    m.set("tab:7", { state: "attached", host: HOST });
+    m.set("tab:8", { state: "detached", host: HOST });
+    m.set("tab:9", { state: "attached", host: "other.test" });
+    m.set("tab:x", { state: "attached", host: HOST });
+    m.set("misc", { host: HOST });
+  };
+
+  it("removing a host detaches and clears every tab on it", async () => {
+    seed();
+    await s.onSettingsChanged(
+      sitesChange([HOST, "other.test"], ["other.test"]),
+      "local",
+    );
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 8 });
+    expect(fake.debugger.detach).not.toHaveBeenCalledWith({ tabId: 9 });
+    const m = fake.storage.session.m;
+    expect(m.has("tab:7") || m.has("tab:8")).toBe(false);
+    expect(m.has("tab:9") && m.has("misc")).toBe(true);
+  });
+
+  it("ignores other areas, other keys, additions and first writes", async () => {
+    seed();
+    await s.onSettingsChanged(sitesChange([HOST], []), "session");
+    await s.onSettingsChanged({ other: {} }, "local");
+    await s.onSettingsChanged(sitesChange([HOST], [HOST, "x.test"]), "local");
+    await s.onSettingsChanged(sitesChange(undefined, []), "local");
+    expect(fake.debugger.detach).not.toHaveBeenCalled();
+    expect(tab()).toBeDefined();
+  });
+
+  it("deleting the settings removes every host", async () => {
+    seed();
+    await s.onSettingsChanged(sitesChange([HOST], undefined), "local");
+    expect(tab()).toBeUndefined();
+  });
+});
+
+describe("onTabRemoved", () => {
+  it("closing a tab clears its state, also when detached", async () => {
+    await s.switchOn(7);
+    await s.onDetach({ tabId: 7 }, "canceled_by_user");
+    await s.onTabRemoved(7);
+    expect(tab()).toBeUndefined();
+  });
+});
+
 describe("getTabStatus", () => {
   it("reports off with the tab host when nothing is stored", async () => {
     expect(await s.getTabStatus(7)).toEqual({ state: "off", host: HOST });
@@ -219,6 +426,25 @@ describe("registerSession", () => {
     });
 
     fake.l.detach!({ tabId: 7 }, "target_closed");
+  });
+});
+
+describe("registerSession listeners", () => {
+  it("wires navigation, settings and tab-close listeners", async () => {
+    s.registerSession();
+    expect(fake.l.event).toBeDefined();
+    expect(fake.l.changed).toBeDefined();
+    await s.switchOn(7);
+    fake.l.removed!(7);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(tab()).toBeUndefined();
+    await s.switchOn(7);
+    fake.l.event!({ tabId: 7 }, "Page.frameNavigated", {
+      frame: { id: "f", url: "http://other.test/" },
+    });
+    fake.l.changed!(sitesChange([HOST], []), "local");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(tab()).toBeUndefined();
   });
 });
 

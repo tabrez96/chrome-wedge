@@ -38,6 +38,12 @@ async function clearTab(tabId: number): Promise<void> {
   await chrome.storage.session.remove(tabKey(tabId));
 }
 
+// Our own detach() does not fire onDetach, so the entry is cleared here.
+async function detachTab(tabId: number): Promise<void> {
+  await chrome.debugger.detach({ tabId }).catch(() => {});
+  await clearTab(tabId);
+}
+
 // Host of the tab's current URL; null if not http(s) or no such tab.
 export async function hostOfTab(tabId: number): Promise<string | null> {
   const t = (await chrome.debugger.getTargets()).find((t) => t.tabId === tabId);
@@ -105,6 +111,7 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
       "Emulation.setFocusEmulationEnabled",
       { enabled: true },
     );
+    await chrome.debugger.sendCommand({ tabId }, "Page.enable");
   } catch (e) {
     await chrome.debugger.detach({ tabId }).catch(() => {});
     return { ok: false, error: "attach-failed", message: errorMessage(e) };
@@ -113,7 +120,23 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
     sites.includes(host) ? sites : [...sites, host],
   );
   await writeTab(tabId, { state: "attached", host });
-  return { ok: true, status: { state: "attached", host } };
+  // A navigation before the entry was stored was missed by onDebuggerEvent.
+  const current = await hostOfTab(tabId);
+  if (
+    current === null ||
+    !(await readSettings()).allowedSites.includes(current)
+  ) {
+    await detachTab(tabId);
+    return {
+      ok: false,
+      error: "attach-failed",
+      message: "The page navigated while switching on.",
+    };
+  }
+  if (current === host)
+    return { ok: true, status: { state: "attached", host } };
+  await writeTab(tabId, { state: "attached", host: current });
+  return { ok: true, status: { state: "attached", host: current } };
 }
 
 export async function switchOff(tabId: number): Promise<SessionReply> {
@@ -138,10 +161,72 @@ export async function onDetach(
   await clearTab(source.tabId);
 }
 
+const sitesOf = (v: unknown): string[] =>
+  isRecord(v) && Array.isArray(v.allowedSites)
+    ? v.allowedSites.filter((h): h is string => typeof h === "string")
+    : [];
+
+export async function onDebuggerEvent(
+  source: chrome.debugger.Debuggee,
+  method: string,
+  params?: object,
+): Promise<void> {
+  const tabId = source.tabId;
+  if (tabId === undefined || method !== "Page.frameNavigated") return;
+  const frame =
+    isRecord(params) && isRecord(params.frame) ? params.frame : null;
+  if (!frame || frame.parentId !== undefined || typeof frame.url !== "string")
+    return;
+  const stored = await readTab(tabId);
+  if (!stored) return;
+  const host = hostOfUrl(frame.url);
+  if (host === null || !(await readSettings()).allowedSites.includes(host)) {
+    await detachTab(tabId);
+    return;
+  }
+  if (host !== stored.host) await writeTab(tabId, { ...stored, host });
+}
+
+export async function onSettingsChanged(
+  changes: Record<string, chrome.storage.StorageChange>,
+  areaName: string,
+): Promise<void> {
+  if (areaName !== "local" || !(SETTINGS_KEY in changes)) return;
+  const change = changes[SETTINGS_KEY];
+  const kept = sitesOf(change.newValue);
+  const removed = sitesOf(change.oldValue).filter((h) => !kept.includes(h));
+  if (removed.length === 0) return;
+  const all = await chrome.storage.session.get(null);
+  const detaching: Promise<void>[] = [];
+  for (const [key, value] of Object.entries(all)) {
+    if (!key.startsWith("tab:")) continue;
+    const tabId = Number(key.slice(4));
+    if (!Number.isInteger(tabId)) continue;
+    if (
+      isRecord(value) &&
+      typeof value.host === "string" &&
+      removed.includes(value.host)
+    )
+      detaching.push(detachTab(tabId));
+  }
+  await Promise.all(detaching);
+}
+
+export async function onTabRemoved(tabId: number): Promise<void> {
+  await clearTab(tabId);
+}
+
 export function registerSession(): void {
   chrome.debugger.onDetach.addListener(
     (src, reason) => void onDetach(src, reason),
   );
+  chrome.debugger.onEvent.addListener(
+    (src, method, params) => void onDebuggerEvent(src, method, params),
+  );
+  chrome.storage.onChanged.addListener(
+    (changes, area) => void onSettingsChanged(changes, area),
+  );
+  chrome.tabs.onRemoved.addListener((tabId) => void onTabRemoved(tabId));
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id || !isPopupMessage(msg)) return false;
     if (msg.type === "scan") return false;
