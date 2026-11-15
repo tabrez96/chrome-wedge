@@ -1,0 +1,20 @@
+<!doctype html>
+<title>Scan fixture</title>
+<label>Code <input id="code" /></label>
+<input id="next" aria-label="Next" />
+<input id="pw" type="password" aria-label="Password" />
+<script>
+  window.keys = [];
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      const t = e.target;
+      window.keys.push({
+        isTrusted: e.isTrusted,
+        key: e.key,
+        value: "value" in t ? t.value : "",
+      });
+    },
+    true,
+  );
+</script>

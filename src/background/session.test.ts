@@ -70,6 +70,15 @@ describe("switchOn", () => {
     expect(settings().allowedSites).toEqual([HOST]);
   });
 
+  it("does not send lastResult in its reply", async () => {
+    fake.storage.session.m.set("tab:7", {
+      state: "attached",
+      host: HOST,
+      lastResult: { kind: "no-field" },
+    });
+    expect(await s.switchOn(7)).toEqual(ON);
+  });
+
   it("keeps other settings fields and does not duplicate the host", async () => {
     fake.storage.local.m.set("settings", {
       version: 1,
@@ -210,5 +219,19 @@ describe("registerSession", () => {
     });
 
     fake.l.detach!({ tabId: 7 }, "target_closed");
+  });
+});
+
+describe("setLastResult", () => {
+  it("keeps the entry and does nothing for unknown tabs", async () => {
+    await s.switchOn(7);
+    await s.setLastResult(7, { kind: "no-field" });
+    expect(tab()).toEqual({
+      state: "attached",
+      host: HOST,
+      lastResult: { kind: "no-field" },
+    });
+    await s.setLastResult(9, { kind: "no-field" });
+    expect(fake.storage.session.m.has("tab:9")).toBe(false);
   });
 });
