@@ -5,8 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>chrome-wedge</title>
     <link rel="stylesheet" href="/src/ui/tokens.css" />
+    <link rel="stylesheet" href="/src/popup/popup.css" />
+    <script type="module" src="/src/popup/main.ts"></script>
   </head>
   <body class="popup">
-    <h1>chrome-wedge</h1>
+    <header class="header">
+      <img
+        class="mark"
+        src="/design/brand/mark.svg"
+        width="24"
+        height="24"
+        alt=""
+      />
+      <span class="wordmark">chrome<span class="hyphen">-</span>wedge</span>
+    </header>
+    <main class="body">
+      <section id="site" class="site" data-on="false">
+        <div class="site-text">
+          <p id="site-title" class="site-title">Off for this site</p>
+          <p id="site-hint" class="site-hint">
+            Turn on to type scans into this site
+          </p>
+        </div>
+        <button
+          id="switch"
+          class="switch"
+          type="button"
+          role="switch"
+          aria-checked="false"
+          aria-labelledby="site-title"
+        >
+          <span class="knob"></span>
+        </button>
+      </section>
+      <label class="section-label" for="code">Code to scan</label>
+      <form id="scan-form" class="scan-row">
+        <input
+          id="code"
+          class="code"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Type a code"
+          autofocus
+        />
+        <button id="scan" class="primary" type="submit">Scan</button>
+      </form>
+      <p class="hint">
+        Types into the focused field, then presses
+        <kbd id="hint-suffix">Enter</kbd>.
+      </p>
+      <div id="result" class="result" hidden>
+        <span class="result-icon" aria-hidden="true"></span>
+        <div>
+          <p class="result-summary"></p>
+          <p class="result-detail"></p>
+          <p class="result-action" hidden>
+            <button id="reconnect" class="link" type="button">
+              Reconnect this tab
+            </button>
+            (the bar will come back).
+          </p>
+        </div>
+      </div>
+    </main>
+    <footer class="footer">
+      <span id="footer-typing">Ends with: Enter · 10 ms per key</span>
+      <button id="help" class="link" type="button">Help</button>
+    </footer>
+    <button
+      id="settings"
+      class="icon-button"
+      type="button"
+      aria-label="Settings"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="8" cy="8" r="2.5" />
+        <path
+          d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"
+        />
+      </svg>
+    </button>
   </body>
 </html>
