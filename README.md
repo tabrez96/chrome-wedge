@@ -32,6 +32,7 @@ Set how scans are typed, which sites are allowed, and the saved codes
 - Build: `npm run build` (output in `dist/`), `npm run dev` (rebuild on change).
 - Load unpacked: open `chrome://extensions`, turn on Developer mode, choose Load unpacked, pick `dist/`. After a rebuild, press the reload icon on the extension card.
 - Checks: `npm run format:check`, `npm run typecheck`, `npm test` (unit tests with coverage; fails under 90% on `src/core/`), `npm run build && npm run e2e`. `npm run format` fixes formatting.
+- Test fixtures: `npm run fixtures` regenerates `test/fixtures/barcodes/` (barcode PNGs and `index.json`) with bwip-js; commit the output.
 - Icons: `npm run icons` regenerates `public/icons/` from `design/brand/mark.svg`.
 
 ---
