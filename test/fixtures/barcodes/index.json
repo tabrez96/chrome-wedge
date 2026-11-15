@@ -1,0 +1,77 @@
+[
+  {
+    "file": "code128-clean.png",
+    "format": "code128",
+    "value": "WEDGE-12345"
+  },
+  {
+    "file": "code128-scaled.png",
+    "format": "code128",
+    "value": "WEDGE-12345"
+  },
+  {
+    "file": "code128-rotated.png",
+    "format": "code128",
+    "value": "WEDGE-12345"
+  },
+  {
+    "file": "code128-lowcontrast.png",
+    "format": "code128",
+    "value": "WEDGE-12345"
+  },
+  {
+    "file": "ean13-clean.png",
+    "format": "ean13",
+    "value": "4006381333931"
+  },
+  {
+    "file": "ean13-scaled.png",
+    "format": "ean13",
+    "value": "4006381333931"
+  },
+  {
+    "file": "ean13-rotated.png",
+    "format": "ean13",
+    "value": "4006381333931"
+  },
+  {
+    "file": "ean13-lowcontrast.png",
+    "format": "ean13",
+    "value": "4006381333931"
+  },
+  {
+    "file": "upca-clean.png",
+    "format": "upca",
+    "value": "036000291452"
+  },
+  {
+    "file": "upca-scaled.png",
+    "format": "upca",
+    "value": "036000291452"
+  },
+  {
+    "file": "upca-rotated.png",
+    "format": "upca",
+    "value": "036000291452"
+  },
+  {
+    "file": "upca-lowcontrast.png",
+    "format": "upca",
+    "value": "036000291452"
+  },
+  {
+    "file": "not-barcode-blank.png",
+    "format": null,
+    "value": null
+  },
+  {
+    "file": "not-barcode-noise.png",
+    "format": null,
+    "value": null
+  },
+  {
+    "file": "not-barcode-shapes.png",
+    "format": null,
+    "value": null
+  }
+]

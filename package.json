@@ -11,7 +11,8 @@
     "e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "icons": "node scripts/icons.mjs"
+    "icons": "node scripts/icons.mjs",
+    "fixtures": "node --experimental-strip-types scripts/make-fixtures.ts && prettier --write test/fixtures/barcodes/index.json"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
@@ -19,11 +20,17 @@
     "@types/chrome": "^0.3.7",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.6",
+    "@types/pngjs": "^6.0.5",
     "@vitest/coverage-v8": "^5.1.0",
+    "bwip-js": "^4.11.4",
     "jsdom": "^31.0.1",
+    "pngjs": "^7.0.0",
     "prettier": "^3.10.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@zxing/library": "^0.21.3"
   }
 }
