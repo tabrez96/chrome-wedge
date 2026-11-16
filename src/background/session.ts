@@ -61,6 +61,13 @@ export async function readSettings(): Promise<Settings> {
   } as Settings;
 }
 
+export async function setFirstRunDone(): Promise<void> {
+  const current = await readSettings();
+  await chrome.storage.local.set({
+    [SETTINGS_KEY]: { ...current, firstRunDone: true },
+  });
+}
+
 // One update at a time, so two tabs can't overwrite each other's host.
 let queue: Promise<unknown> = Promise.resolve();
 const updateAllowedSites = (fn: (sites: string[]) => string[]) =>

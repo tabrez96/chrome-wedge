@@ -461,3 +461,15 @@ describe("setLastResult", () => {
     expect(fake.storage.session.m.has("tab:9")).toBe(false);
   });
 });
+
+describe("setFirstRunDone", () => {
+  it("setFirstRunDone sets the flag and keeps other settings", async () => {
+    fake.storage.local.m.set("settings", {
+      version: 1,
+      allowedSites: ["a.test"],
+    });
+    await s.setFirstRunDone();
+    expect(settings().firstRunDone).toBe(true);
+    expect(settings().allowedSites).toEqual(["a.test"]);
+  });
+});

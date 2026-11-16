@@ -5,8 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Welcome to chrome-wedge</title>
     <link rel="stylesheet" href="/src/ui/tokens.css" />
+    <link rel="stylesheet" href="/src/welcome/welcome.css" />
+    <script type="module" src="/src/welcome/main.ts"></script>
   </head>
-  <body>
-    <h1>Welcome</h1>
+  <body class="welcome">
+    <header class="header">
+      <img
+        class="mark"
+        src="/design/brand/mark.svg"
+        width="32"
+        height="32"
+        alt=""
+      />
+      <span class="wordmark">chrome<span class="hyphen">-</span>wedge</span>
+    </header>
+    <main class="card">
+      <h1>
+        Scans arrive as real keystrokes. Chrome will show a bar while it types.
+      </h1>
+      <p class="lead">
+        To press keys the way a hardware scanner does, chrome-wedge uses
+        Chrome's debugging connection. Chrome always shows this bar on that tab,
+        and no extension can hide it.
+      </p>
+      <figure class="mock">
+        <div aria-hidden="true">
+          <div class="mock-tabs">
+            <span class="mock-tab">Point of sale · Till 3</span>
+          </div>
+          <div class="mock-bar">
+            <span>“chrome-wedge” started debugging this browser</span>
+            <span class="mock-cancel">Cancel</span>
+            <svg
+              class="mock-close"
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="var(--laser)"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <circle cx="10" cy="10" r="9" />
+              <path d="M7 7l6 6M13 7l-6 6" />
+            </svg>
+          </div>
+          <div class="mock-page">
+            <span class="mock-label">Item code</span>
+            <span class="mock-field"
+              >5012345678900<span class="mock-caret"></span
+            ></span>
+            <span class="mock-note">typed in, then Enter</span>
+          </div>
+        </div>
+        <figcaption class="warning">
+          <strong>Leave this bar open.</strong> Closing it or pressing Cancel
+          stops scans on that tab until you reconnect.
+        </figcaption>
+      </figure>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h2>Turn it on for a site</h2>
+          <p>
+            Open the popup on your test site and switch it on. Other sites are
+            never touched.
+          </p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h2>Click a field</h2>
+          <p>
+            Put the cursor in the field your app reads scans from, like “Item
+            code”.
+          </p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h2>Scan</h2>
+          <p>
+            Type a code or drop a barcode image. It's typed in, followed by
+            Enter.
+          </p>
+        </li>
+      </ol>
+      <p class="safety">
+        <strong>Built to stay out of the way:</strong> it only types into the
+        field you focused, on the tab you switched on, and never into password
+        fields.
+      </p>
+      <div class="actions">
+        <button id="got-it" class="primary" type="button">Got it</button>
+        <button id="open-settings" class="link" type="button">
+          Change typing settings
+        </button>
+      </div>
+    </main>
   </body>
 </html>
