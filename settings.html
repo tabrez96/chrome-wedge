@@ -5,8 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>chrome-wedge settings</title>
     <link rel="stylesheet" href="/src/ui/tokens.css" />
+    <link rel="stylesheet" href="/src/settings/settings.css" />
+    <script type="module" src="/src/settings/main.ts"></script>
   </head>
-  <body>
-    <h1>Settings</h1>
+  <body class="settings">
+    <header class="header">
+      <img
+        class="mark"
+        src="/design/brand/mark.svg"
+        width="32"
+        height="32"
+        alt=""
+      />
+      <span class="wordmark">chrome<span class="hyphen">-</span>wedge</span>
+      <h1 class="page-name">Settings</h1>
+      <span
+        id="save-status"
+        class="save-status"
+        role="status"
+        aria-live="polite"
+      ></span>
+    </header>
+    <main class="grid">
+      <section class="card" aria-labelledby="typing-title">
+        <h2 id="typing-title">Typing</h2>
+        <p class="card-lead">
+          How each scan is typed, like a scanner's setup barcodes.
+        </p>
+        <label for="prefix">Prefix (typed before the code)</label>
+        <input
+          id="prefix"
+          type="text"
+          maxlength="32"
+          placeholder="None"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <span id="suffix-label" class="label">End each scan with</span>
+        <div class="segmented" role="group" aria-labelledby="suffix-label">
+          <button type="button" data-suffix="enter" aria-pressed="false">
+            Enter
+          </button>
+          <button type="button" data-suffix="tab" aria-pressed="false">
+            Tab
+          </button>
+          <button type="button" data-suffix="none" aria-pressed="false">
+            Nothing
+          </button>
+        </div>
+        <label for="delay">Delay between keys</label>
+        <div class="delay-row">
+          <input
+            id="delay"
+            type="text"
+            inputmode="numeric"
+            aria-describedby="delay-hint delay-error"
+          />
+          <span class="unit">ms</span>
+          <span id="delay-hint" class="hint"
+            >0 to 500. Raise it if your app drops characters.</span
+          >
+        </div>
+        <p id="delay-error" class="field-error" hidden>
+          Enter a whole number from 0 to 500.
+        </p>
+        <label for="format">Image format to look for first</label>
+        <select id="format">
+          <option value="code128">Code 128</option>
+          <option value="ean13">EAN-13</option>
+          <option value="upca">UPC-A</option>
+        </select>
+      </section>
+      <section id="sites-card" class="card" aria-labelledby="sites-title">
+        <h2 id="sites-title">Allowed sites</h2>
+        <p class="card-lead">
+          chrome-wedge only types on these sites. Turn a site on from the popup,
+          or add it here.
+        </p>
+      </section>
+    </main>
   </body>
 </html>

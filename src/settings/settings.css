@@ -1,0 +1,128 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 48px;
+}
+.wordmark {
+  font-size: 19px;
+  font-weight: var(--weight-wordmark);
+  letter-spacing: var(--tracking-wordmark);
+}
+.hyphen {
+  color: var(--laser);
+}
+.page-name {
+  font-size: var(--text-page-lg);
+  font-weight: 400;
+  color: var(--muted);
+  margin: 0 0 0 8px;
+}
+.save-status {
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: 8px;
+}
+.save-status.error {
+  color: var(--error-text);
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 952px;
+  margin: 16px auto 48px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card-lg);
+  padding: 24px;
+}
+.card h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+.card-lead {
+  color: var(--muted);
+  font-size: var(--text-page);
+  line-height: 1.5;
+  margin: 4px 0 16px;
+}
+.card label,
+.card .label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+.card input,
+.card select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  height: 38px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+#prefix,
+#format {
+  width: 100%;
+}
+#delay {
+  width: 90px;
+}
+.card input::placeholder {
+  color: var(--muted);
+}
+#delay[aria-invalid="true"] {
+  border-color: var(--error-text);
+}
+.delay-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.unit {
+  color: var(--muted);
+}
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.field-error {
+  font-size: 13px;
+  color: var(--error-text);
+  margin: 6px 0 0;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.segmented button {
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  padding: 0 14px;
+  height: 36px;
+  font: inherit;
+  cursor: pointer;
+}
+.segmented button + button {
+  border-left: 1px solid var(--border-strong);
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 700;
+}
+.segmented button:focus-visible {
+  outline-offset: -2px;
+}

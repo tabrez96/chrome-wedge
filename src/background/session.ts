@@ -73,6 +73,23 @@ let queue: Promise<unknown> = Promise.resolve();
 const updateAllowedSites = (fn: (sites: string[]) => string[]) =>
   (queue = queue.catch(() => {}).then(() => writeAllowedSites(fn)));
 
+export type TypingSettings = Pick<
+  Settings,
+  "prefix" | "suffix" | "keyDelayMs" | "defaultFormat"
+>;
+
+// Reads the stored settings fresh and writes the patch over them, so an
+// allowed site added by the worker since the page loaded is kept.
+export const updateSettings = (patch: Partial<TypingSettings>): Promise<void> =>
+  (queue = queue
+    .catch(() => {})
+    .then(async () => {
+      const current = await readSettings();
+      await chrome.storage.local.set({
+        [SETTINGS_KEY]: { ...current, ...patch },
+      });
+    })) as Promise<void>;
+
 async function writeAllowedSites(
   fn: (sites: string[]) => string[],
 ): Promise<void> {

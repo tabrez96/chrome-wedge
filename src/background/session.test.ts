@@ -473,3 +473,23 @@ describe("setFirstRunDone", () => {
     expect(settings().allowedSites).toEqual(["a.test"]);
   });
 });
+
+describe("updateSettings", () => {
+  it("updateSettings keeps an allowed site added after the page loaded", async () => {
+    fake.storage.local.m.set("settings", {
+      version: 1,
+      allowedSites: ["a.test"],
+    });
+    await s.updateSettings({ prefix: "X" });
+    expect(settings().prefix).toBe("X");
+    expect(settings().allowedSites).toEqual(["a.test"]);
+  });
+
+  it("updateSettings writes two quick patches without losing either", async () => {
+    const first = s.updateSettings({ prefix: "P" });
+    const second = s.updateSettings({ keyDelayMs: 50 });
+    await Promise.all([first, second]);
+    expect(settings().prefix).toBe("P");
+    expect(settings().keyDelayMs).toBe(50);
+  });
+});

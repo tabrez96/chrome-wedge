@@ -7,6 +7,7 @@ import {
   clampPrefix,
   defaultSettings,
   migrate,
+  parseKeyDelay,
   type SavedCode,
 } from "./settings";
 
@@ -74,6 +75,19 @@ describe("clampKeyDelay", () => {
     [undefined, 10],
   ])("%j -> %d", (ms, expected) => {
     expect(clampKeyDelay(ms)).toBe(expected);
+  });
+});
+
+describe("parseKeyDelay", () => {
+  it("accepts whole numbers 0 to 500", () => {
+    expect(parseKeyDelay("0")).toBe(0);
+    expect(parseKeyDelay(" 10 ")).toBe(10);
+    expect(parseKeyDelay("500")).toBe(500);
+    expect(parseKeyDelay("007")).toBe(7);
+  });
+
+  it.each(["", "-1", "2.5", "1e2", "abc", "501"])("rejects %j", (text) => {
+    expect(parseKeyDelay(text)).toBeNull();
   });
 });
 
