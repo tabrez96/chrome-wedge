@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PopupMessage } from "../core/messages";
+import type { SavedCode } from "../core/settings";
 import { PNG } from "pngjs";
 import { initPopup, type PopupApi } from "./main";
 
@@ -33,12 +34,17 @@ const pngPixels = (name: string) => {
 let current = "";
 const readFixture: PopupApi["readPixels"] = async () => pngPixels(current);
 const settings =
-  (defaultFormat = "code128") =>
+  (defaultFormat = "code128", savedCodes: SavedCode[] = []) =>
   async () => ({
     suffix: "enter" as const,
     keyDelayMs: 10,
     defaultFormat,
+    savedCodes,
   });
+const codes: SavedCode[] = [
+  { id: "a", name: "Coffee beans 1kg", value: "5012345678900", shortcut: 1 },
+  { id: "b", name: "Pallet label", value: "PLT-004417-A", shortcut: null },
+];
 const fileOf = (name: string, type = "image/png") =>
   new File(["x"], name, { type });
 const dropFile = (file: File) => {
@@ -51,7 +57,11 @@ const dropFile = (file: File) => {
 async function open(
   state: "off" | "attached" | "detached" = "attached",
   scanReply: unknown = sentReply,
-  opts: { defaultFormat?: string; readPixels?: PopupApi["readPixels"] } = {},
+  opts: {
+    defaultFormat?: string;
+    readPixels?: PopupApi["readPixels"];
+    savedCodes?: SavedCode[];
+  } = {},
 ) {
   const send = vi.fn(async (msg: PopupMessage) => {
     if (msg.type === "scan") return scanReply;
@@ -67,10 +77,11 @@ async function open(
   const api = {
     tabId: async () => 7,
     send,
-    settings: settings(opts.defaultFormat),
+    settings: settings(opts.defaultFormat, opts.savedCodes),
     readPixels: opts.readPixels ?? readFixture,
     openHelp: vi.fn(),
     openSettings: vi.fn(),
+    openSavedCodes: vi.fn(),
   } as unknown as PopupApi;
   await initPopup(document, api);
   return { send, api };
@@ -185,8 +196,88 @@ describe("initPopup", () => {
       readPixels: readFixture,
       openHelp: vi.fn(),
       openSettings: vi.fn(),
+      openSavedCodes: vi.fn(),
     } as unknown as PopupApi);
     expect(q("#result").textContent).toContain("no worker");
+  });
+});
+
+describe("saved codes", () => {
+  const rowScan = (id: string) =>
+    q<HTMLButtonElement>(`.saved-scan[data-id="${id}"]`);
+
+  it("a saved code's Scan sends its value and shows the sent line", async () => {
+    const { send } = await open("attached", sentReply, { savedCodes: codes });
+    q<HTMLInputElement>("#code").value = "typed";
+    rowScan("b").click();
+    await vi.waitFor(() =>
+      expect(q(".result-summary").textContent).toBe("Scanned 4006381333931"),
+    );
+    expect(send).toHaveBeenCalledWith({
+      type: "scan",
+      tabId: 7,
+      value: "PLT-004417-A",
+    });
+    expect(q<HTMLInputElement>("#code").value).toBe("typed");
+  });
+
+  it("a saved code scan keeps focus on its button", async () => {
+    await open("attached", sentReply, { savedCodes: codes });
+    rowScan("a").click();
+    await vi.waitFor(() => expect(q("#result").hidden).toBe(false));
+    await vi.waitFor(() => expect(document.activeElement).toBe(rowScan("a")));
+  });
+
+  it("saved Scan buttons are disabled when the site is off", async () => {
+    await open("off", sentReply, { savedCodes: codes });
+    const btns = document.querySelectorAll<HTMLButtonElement>(".saved-scan");
+    expect(btns).toHaveLength(2);
+    expect([...btns].every((b) => b.disabled)).toBe(true);
+  });
+
+  it("Edit opens the saved codes settings", async () => {
+    const { api } = await open();
+    q("#saved-edit").click();
+    expect(api.openSavedCodes).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the empty line with no saved codes", async () => {
+    await open();
+    expect(q("#saved-empty").hidden).toBe(false);
+    expect(document.querySelector(".saved-row")).toBeNull();
+  });
+
+  it("shows at most nine saved codes", async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      id: `c${i}`,
+      name: `Code ${i}`,
+      value: `${i}`,
+      shortcut: null,
+    }));
+    await open("attached", sentReply, { savedCodes: many });
+    expect(document.querySelectorAll(".saved-row")).toHaveLength(9);
+  });
+
+  it("focus order follows the spec", async () => {
+    await open("attached", sentReply, { savedCodes: codes });
+    const order = [
+      ...document.querySelectorAll<HTMLElement>(
+        'button:not([hidden]), input:not([type=file]), [tabindex="0"]',
+      ),
+    ]
+      .filter((e) => !e.closest("[hidden]"))
+      .map((e) => e.id || `${e.className}:${e.dataset.id}`);
+    expect(order).toEqual([
+      "switch",
+      "code",
+      "scan",
+      "drop",
+      "secondary saved-scan:a",
+      "secondary saved-scan:b",
+      "saved-edit",
+      "help",
+      "settings",
+    ]);
   });
 });
 

@@ -2,7 +2,9 @@ import type { PopupMessage, ScanResult, SessionReply } from "../core/messages";
 import { decodeBarcode } from "../core/decode";
 import {
   checkScanValue,
+  MAX_SAVED_CODES,
   type BarcodeFormat,
+  type SavedCode,
   type Suffix,
 } from "../core/settings";
 import { readSettings } from "../background/session";
@@ -12,6 +14,7 @@ import {
   describeResult,
   describeSessionError,
   render,
+  renderSavedCodes,
   type ImageCard,
   type PopupView,
 } from "./view";
@@ -23,10 +26,12 @@ export type PopupApi = {
     suffix: Suffix;
     keyDelayMs: number;
     defaultFormat: BarcodeFormat;
+    savedCodes: SavedCode[];
   }>;
   readPixels(file: Blob): Promise<Pixels>;
   openHelp(): void;
   openSettings(): void;
+  openSavedCodes(): void;
 };
 
 const errorResult = (err: unknown): ScanResult => ({
@@ -52,6 +57,7 @@ export async function initPopup(doc: Document, api: PopupApi): Promise<void> {
   };
   let tabId: number | null = null;
   let defaultFormat: BarcodeFormat = "code128";
+  let saved: SavedCode[] = [];
   let latest = 0;
   const drop = el<HTMLElement>("drop");
   const fileInput = el<HTMLInputElement>("file");
@@ -121,10 +127,10 @@ export async function initPopup(doc: Document, api: PopupApi): Promise<void> {
     }
   };
 
-  el("scan-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  // fromInput: the value came from the code input, so a sent scan clears
+  // the image card as before. Saved-code scans leave the input and card alone.
+  const runScan = async (value: string, fromInput: boolean): Promise<void> => {
     if (view.busy || tabId === null || view.status.state === "off") return;
-    const value = code.value;
     const error = checkScanValue(value);
     if (error) {
       update({ result: describeResult({ kind: "invalid", error }) });
@@ -148,12 +154,31 @@ export async function initPopup(doc: Document, api: PopupApi): Promise<void> {
             : view.status,
     };
     const result = { ...status, result: describeResult(r) };
+    if (!fromInput) {
+      update(result);
+      return;
+    }
     // A newer image or edit made this result stale; keep the current
     // selection, but still show that typing stopped.
     if (gen === latest) setImage(null, result);
     else update(r.kind === "detached" ? result : status);
+  };
+
+  el("scan-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await runScan(code.value, true);
     code.focus();
   });
+  el("saved-list").addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
+      ".saved-scan",
+    );
+    const c = btn && saved.find((s) => s.id === btn.dataset.id);
+    if (!btn || !c) return;
+    await runScan(c.value, false);
+    btn.focus(); // stay on the row so it can be sent again
+  });
+  el("saved-edit").addEventListener("click", () => api.openSavedCodes());
   drop.addEventListener("click", () => fileInput.click());
   drop.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
@@ -191,6 +216,10 @@ export async function initPopup(doc: Document, api: PopupApi): Promise<void> {
   tabId = await api.tabId();
   const s = await api.settings();
   defaultFormat = s.defaultFormat;
+  saved = Array.isArray(s.savedCodes)
+    ? s.savedCodes.slice(0, MAX_SAVED_CODES)
+    : [];
+  renderSavedCodes(doc, saved);
   update({ suffix: s.suffix, keyDelayMs: s.keyDelayMs });
   if (tabId !== null) {
     try {
@@ -218,5 +247,9 @@ if (typeof chrome !== "undefined" && chrome.runtime?.id) {
     openHelp: () =>
       void chrome.tabs.create({ url: chrome.runtime.getURL("welcome.html") }),
     openSettings: () => void chrome.runtime.openOptionsPage(),
+    openSavedCodes: () =>
+      void chrome.tabs.create({
+        url: chrome.runtime.getURL("settings.html#saved-codes"),
+      }),
   });
 }

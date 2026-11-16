@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { SavedCode } from "../core/settings";
 import {
   describeImage,
   describeResult,
   describeSessionError,
   render,
+  renderSavedCodes,
   type PopupView,
 } from "./view";
 
@@ -215,7 +217,7 @@ describe("render", () => {
 });
 
 describe("markup", () => {
-  it("keeps focus order switch → code → scan → drop → reconnect → help → settings", () => {
+  it("keeps focus order switch → code → scan → drop → reconnect → saved Edit → help → settings", () => {
     const els = [
       ...document.querySelectorAll("button, input:not([hidden]), #drop"),
     ];
@@ -225,6 +227,7 @@ describe("markup", () => {
       "scan",
       "drop",
       "reconnect",
+      "saved-edit",
       "help",
       "settings",
     ]);
@@ -250,5 +253,69 @@ describe("describeImage", () => {
     ],
   ] as const)("describes %j", (outcome, summary, detail) => {
     expect(describeImage(outcome)).toMatchObject({ summary, detail });
+  });
+});
+
+describe("renderSavedCodes", () => {
+  const codes: SavedCode[] = [
+    { id: "a", name: "Coffee beans 1kg", value: "5012345678900", shortcut: 1 },
+    { id: "b", name: "", value: "PLT-004417-A", shortcut: null },
+  ];
+  const scanBtns = () =>
+    document.querySelectorAll<HTMLButtonElement>(".saved-scan");
+
+  it("shows a row per code with name, value and Alt+N", () => {
+    renderSavedCodes(document, codes);
+    const rows = document.querySelectorAll(".saved-row");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.querySelector(".saved-name")!.textContent).toBe(
+      "Coffee beans 1kg",
+    );
+    expect(rows[0]!.querySelector(".saved-value")!.textContent).toBe(
+      "5012345678900",
+    );
+    expect(rows[0]!.querySelector("kbd")!.textContent).toBe("Alt+1");
+    expect(rows[1]!.querySelector("kbd")).toBeNull();
+  });
+
+  it("shows the empty line when there are no codes", () => {
+    renderSavedCodes(document, []);
+    expect(q("#saved-empty").hidden).toBe(false);
+    expect(q("#saved-list").hidden).toBe(true);
+    renderSavedCodes(document, codes);
+    expect(q("#saved-empty").hidden).toBe(true);
+    expect(q("#saved-list").hidden).toBe(false);
+  });
+
+  it("labels each Scan button with the code name, or the value", () => {
+    renderSavedCodes(document, codes);
+    expect(scanBtns()[0]!.getAttribute("aria-label")).toBe(
+      "Scan Coffee beans 1kg",
+    );
+    expect(scanBtns()[1]!.getAttribute("aria-label")).toBe("Scan PLT-004417-A");
+    expect(q(".saved-row + .saved-row .saved-name").textContent).toBe(
+      "PLT-004417-A",
+    );
+  });
+
+  it("renders names as text", () => {
+    renderSavedCodes(document, [
+      { id: "x", name: "<b>x</b>", value: "1", shortcut: null },
+    ]);
+    expect(document.querySelector(".saved-name b")).toBeNull();
+    expect(q(".saved-name").textContent).toBe("<b>x</b>");
+  });
+
+  it("render disables saved Scan buttons when off or busy", () => {
+    renderSavedCodes(document, codes);
+    const disabled = (v: PopupView) => {
+      render(document, v);
+      return [...scanBtns()].map((b) => b.disabled);
+    };
+    expect(
+      disabled({ ...base, status: { state: "off", host: "pos.example.test" } }),
+    ).toEqual([true, true]);
+    expect(disabled({ ...base, busy: true })).toEqual([true, true]);
+    expect(disabled(base)).toEqual([false, false]);
   });
 });
