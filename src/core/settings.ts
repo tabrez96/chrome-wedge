@@ -67,6 +67,14 @@ export function clampKeyDelay(ms: unknown): number {
   return Math.min(KEY_DELAY_MAX_MS, Math.max(KEY_DELAY_MIN_MS, Math.round(ms)));
 }
 
+// The delay field's text as a whole number of ms, or null if it isn't one from 0 to 500.
+export function parseKeyDelay(text: string): number | null {
+  const t = text.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const ms = Number(t);
+  return ms >= KEY_DELAY_MIN_MS && ms <= KEY_DELAY_MAX_MS ? ms : null;
+}
+
 export function clampPrefix(prefix: unknown): string {
   if (typeof prefix !== "string") return "";
   return [...prefix.replace(LINE_BREAKS, "")]
