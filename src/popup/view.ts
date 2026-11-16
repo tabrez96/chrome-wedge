@@ -2,6 +2,7 @@ import type { ScanResult, SessionReply, TabStatus } from "../core/messages";
 import {
   MAX_SCAN_LENGTH,
   type BarcodeFormat,
+  type SavedCode,
   type Suffix,
 } from "../core/settings";
 import { FORMAT_NAMES } from "./image";
@@ -158,6 +159,8 @@ export function render(doc: Document, view: PopupView): void {
   const scan = $<HTMLButtonElement>("#scan");
   scan.disabled = !on || busy;
   scan.textContent = busy ? "Typing…" : "Scan";
+  for (const b of doc.querySelectorAll<HTMLButtonElement>(".saved-scan"))
+    b.disabled = !on || busy;
 
   const shown =
     view.result ??
@@ -189,4 +192,40 @@ export function render(doc: Document, view: PopupView): void {
   $("#hint-suffix").textContent = name;
   $("#footer-typing").textContent =
     `Ends with: ${name} · ${view.keyDelayMs} ms per key`;
+}
+
+// Builds the rows once; render() only toggles their disabled state, so
+// focus on a row's Scan button survives re-renders.
+export function renderSavedCodes(
+  doc: Document,
+  codes: readonly SavedCode[],
+): void {
+  const list = doc.getElementById("saved-list")!;
+  list.replaceChildren();
+  doc.getElementById("saved-empty")!.hidden = codes.length > 0;
+  list.hidden = codes.length === 0;
+  const make = (tag: string, cls: string, text?: string) => {
+    const e = doc.createElement(tag);
+    e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  for (const code of codes) {
+    const label = code.name === "" ? code.value : code.name;
+    const text = make("div", "saved-text");
+    text.append(
+      make("p", "saved-name", label),
+      make("p", "saved-value", code.value),
+    );
+    const btn = make("button", "secondary saved-scan", "Scan");
+    btn.setAttribute("type", "button");
+    btn.dataset.id = code.id;
+    btn.setAttribute("aria-label", `Scan ${label}`);
+    const row = make("li", "saved-row");
+    row.append(text);
+    if (code.shortcut !== null)
+      row.append(make("kbd", "saved-key", `Alt+${code.shortcut}`));
+    row.append(btn);
+    list.append(row);
+  }
 }
