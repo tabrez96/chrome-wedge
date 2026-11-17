@@ -542,3 +542,15 @@ describe("updateSettings", () => {
     expect(settings().keyDelayMs).toBe(50);
   });
 });
+
+describe("updateAllowedSites", () => {
+  it("updateAllowedSites runs queued updates in order without losing one", async () => {
+    fake.storage.local.m.set("settings", { version: 1, prefix: "P" });
+    await Promise.all([
+      s.updateAllowedSites((sites) => [...sites, "a"]),
+      s.updateAllowedSites((sites) => [...sites, "b"]),
+    ]);
+    expect(settings().allowedSites).toEqual(["a", "b"]);
+    expect(settings().prefix).toBe("P");
+  });
+});

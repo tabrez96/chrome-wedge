@@ -18,17 +18,35 @@ const $ = <T extends HTMLElement>(id: string) =>
 const suffixBtn = (v: string) =>
   document.querySelector<HTMLButtonElement>(`[data-suffix="${v}"]`)!;
 
+let current: Partial<Settings> = {};
+let changed: (s: Settings) => void = () => {};
+
 async function setup(
   overrides: Partial<Settings> = {},
   save: SettingsApi["save"] = vi.fn(async () => {}),
+  extra: Partial<SettingsApi> = {},
 ) {
+  current = overrides;
   const api: SettingsApi = {
-    load: async () => ({ ...defaultSettings(), ...overrides }),
+    load: async () => ({ ...defaultSettings(), ...current }),
     save,
+    addSite: vi.fn(async () => {}),
+    removeSite: vi.fn(async () => {}),
+    onChange: (l) => (changed = l),
+    ...extra,
   };
   await initSettings(document, api);
   return api;
 }
+
+const submitSite = (value: string) => {
+  $<HTMLInputElement>("site-host").value = value;
+  $<HTMLFormElement>("site-form").dispatchEvent(
+    new Event("submit", { cancelable: true }),
+  );
+};
+const rows = () =>
+  [...document.querySelectorAll(".site-host")].map((e) => e.textContent);
 
 function change(el: HTMLInputElement | HTMLSelectElement, value: string) {
   el.value = value;
@@ -115,5 +133,95 @@ describe("settings page", () => {
     await flush();
     expect($("save-status").textContent).toBe("✓ Changes saved");
     expect($("save-status").classList.contains("error")).toBe(false);
+  });
+});
+
+describe("allowed sites", () => {
+  it("shows the empty state when there are no sites", async () => {
+    await setup();
+    expect($("sites-table").hidden).toBe(true);
+    expect($("sites-empty").hidden).toBe(false);
+    expect($("sites-empty").textContent!.trim()).toBe(
+      "No sites yet. Scans won't be typed anywhere until you add one.",
+    );
+    expect($("site-host").getAttribute("placeholder")).toBe(
+      "e.g. localhost:3000",
+    );
+  });
+
+  it("lists stored sites in a table", async () => {
+    await setup({ allowedSites: ["a.test", "b.test:81"] });
+    expect(rows()).toEqual(["a.test", "b.test:81"]);
+    expect($("sites-table").hidden).toBe(false);
+    expect($("sites-empty").hidden).toBe(true);
+    const labels = [...document.querySelectorAll(".link-danger")].map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual(["Remove a.test", "Remove b.test:81"]);
+  });
+
+  it("adding normalises the host and saves it", async () => {
+    const api = await setup();
+    submitSite("HTTPS://Pos.Example.com:3000/till");
+    await flush();
+    expect(api.addSite).toHaveBeenCalledWith("pos.example.com:3000");
+    expect($<HTMLInputElement>("site-host").value).toBe("");
+    expect($("save-status").textContent).toBe("✓ Changes saved");
+  });
+
+  it.each(["", "not a host!", "localhost:99999"])(
+    "invalid host %j shows the inline error and does not save",
+    async (bad) => {
+      const api = await setup();
+      submitSite(bad);
+      expect(api.addSite).not.toHaveBeenCalled();
+      expect($("site-error").hidden).toBe(false);
+      expect($("site-error").textContent!.trim()).toBe(
+        "Enter a host like localhost:3000 or pos.example.com",
+      );
+      expect($("site-host").getAttribute("aria-invalid")).toBe("true");
+    },
+  );
+
+  it("fixing the host clears the error", async () => {
+    const api = await setup();
+    submitSite("not a host!");
+    submitSite("a.test");
+    await flush();
+    expect($("site-error").hidden).toBe(true);
+    expect($("site-host").hasAttribute("aria-invalid")).toBe(false);
+    expect(api.addSite).toHaveBeenCalledTimes(1);
+  });
+
+  it("Remove calls removeSite and re-renders from storage", async () => {
+    const api = await setup({ allowedSites: ["a.test"] }, undefined, {
+      removeSite: vi.fn(async () => {
+        current = { allowedSites: [] };
+      }),
+    });
+    document.querySelector<HTMLButtonElement>(".link-danger")!.click();
+    await flush();
+    expect(api.removeSite).toHaveBeenCalledWith("a.test");
+    expect(rows()).toEqual([]);
+    expect($("sites-empty").hidden).toBe(false);
+    expect($("save-status").textContent).toBe("✓ Changes saved");
+  });
+
+  it("a failed add reports the error", async () => {
+    await setup({}, undefined, {
+      addSite: vi.fn().mockRejectedValue(new Error("quota")),
+    });
+    submitSite("a.test");
+    await flush();
+    expect($("save-status").textContent).toBe("Couldn't save your change.");
+    expect($("save-status").classList.contains("error")).toBe(true);
+  });
+
+  it("re-renders the list when settings change elsewhere", async () => {
+    await setup({ prefix: "X" });
+    $<HTMLInputElement>("prefix").value = "typing";
+    changed({ ...defaultSettings(), allowedSites: ["new.test"] });
+    expect(rows()).toEqual(["new.test"]);
+    expect($<HTMLInputElement>("prefix").value).toBe("typing");
   });
 });

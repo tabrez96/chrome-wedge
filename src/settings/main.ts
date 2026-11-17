@@ -1,8 +1,11 @@
 import {
   readSettings,
+  SETTINGS_KEY,
+  updateAllowedSites,
   updateSettings,
   type TypingSettings,
 } from "../background/session";
+import { normaliseHost, withoutSite, withSite } from "../core/hosts";
 import {
   clampPrefix,
   FORMATS,
@@ -16,6 +19,9 @@ import {
 export type SettingsApi = {
   load(): Promise<Settings>;
   save(patch: Partial<TypingSettings>): Promise<void>;
+  addSite(host: string): Promise<void>;
+  removeSite(host: string): Promise<void>;
+  onChange(listener: (s: Settings) => void): void;
 };
 
 export async function initSettings(
@@ -32,9 +38,16 @@ export async function initSettings(
   const suffixButtons =
     doc.querySelectorAll<HTMLButtonElement>(".segmented button");
 
-  async function save(patch: Partial<TypingSettings>): Promise<void> {
+  const siteForm = byId<HTMLFormElement>("site-form");
+  const hostInput = byId<HTMLInputElement>("site-host");
+  const siteError = byId<HTMLElement>("site-error");
+  const sitesTable = byId<HTMLElement>("sites-table");
+  const sitesList = byId<HTMLElement>("sites-list");
+  const sitesEmpty = byId<HTMLElement>("sites-empty");
+
+  async function report(work: Promise<void>): Promise<void> {
     try {
-      await api.save(patch);
+      await work;
       status.textContent = "✓ Changes saved";
       status.classList.remove("error");
     } catch {
@@ -42,6 +55,57 @@ export async function initSettings(
       status.classList.add("error");
     }
   }
+  const save = (patch: Partial<TypingSettings>) => report(api.save(patch));
+
+  function renderSites(sites: readonly string[]): void {
+    sitesList.replaceChildren();
+    for (const host of sites) {
+      const row = doc.createElement("tr");
+      const name = doc.createElement("td");
+      name.className = "site-host";
+      name.textContent = host;
+      const action = doc.createElement("td");
+      const remove = doc.createElement("button");
+      remove.type = "button";
+      remove.className = "link-danger";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${host}`);
+      remove.addEventListener("click", () => void removeSite(host));
+      action.append(remove);
+      row.append(name, action);
+      sitesList.append(row);
+    }
+    sitesTable.hidden = sites.length === 0;
+    sitesEmpty.hidden = sites.length !== 0;
+  }
+
+  // On failure the current list stays.
+  async function refreshSites(): Promise<void> {
+    try {
+      renderSites((await api.load()).allowedSites);
+    } catch {
+      // Keep what is shown.
+    }
+  }
+
+  async function removeSite(host: string): Promise<void> {
+    await report(api.removeSite(host));
+    await refreshSites();
+  }
+
+  siteForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const host = normaliseHost(hostInput.value);
+    if (host === null) {
+      hostInput.setAttribute("aria-invalid", "true");
+      siteError.hidden = false;
+      return;
+    }
+    hostInput.removeAttribute("aria-invalid");
+    siteError.hidden = true;
+    hostInput.value = "";
+    void report(api.addSite(host)).then(refreshSites);
+  });
 
   function showSuffix(v: Suffix): void {
     for (const b of suffixButtons)
@@ -81,7 +145,11 @@ export async function initSettings(
       void save({ defaultFormat: format.value as BarcodeFormat });
   });
 
+  // Only the site list follows changes from elsewhere; typing fields stay as edited.
+  api.onChange((s) => renderSites(s.allowedSites));
+
   const s = await api.load();
+  renderSites(s.allowedSites);
   prefix.value = s.prefix;
   delay.value = String(s.keyDelayMs);
   format.value = s.defaultFormat;
@@ -89,5 +157,15 @@ export async function initSettings(
 }
 
 if (typeof chrome !== "undefined" && chrome.runtime?.id) {
-  void initSettings(document, { load: readSettings, save: updateSettings });
+  void initSettings(document, {
+    load: readSettings,
+    save: updateSettings,
+    addSite: (h) => updateAllowedSites((sites) => withSite(sites, h)),
+    removeSite: (h) => updateAllowedSites((sites) => withoutSite(sites, h)),
+    onChange: (listener) =>
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && SETTINGS_KEY in changes)
+          void readSettings().then(listener);
+      }),
+  });
 }

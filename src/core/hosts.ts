@@ -19,6 +19,7 @@ function isIPv4(labels: string[]): boolean {
 export function normaliseHost(input: string): string | null {
   let s = input.trim().toLowerCase();
   if (s === "") return null;
+  const scheme = /^([a-z][a-z0-9+.-]*):\/\//.exec(s)?.[1];
   s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, "");
   s = s.split(/[/?#]/, 1)[0] ?? "";
   const parts = s.split(":");
@@ -34,6 +35,9 @@ export function normaliseHost(input: string): string | null {
   if (!/^\d{1,5}$/.test(port)) return null;
   const n = Number(port);
   if (n < 1 || n > 65535) return null;
+  // A page's host never carries its scheme's default port, so drop it here too.
+  if ((scheme === "http" && n === 80) || (scheme === "https" && n === 443))
+    return host;
   return `${host}:${n}`;
 }
 
@@ -58,4 +62,13 @@ export function isAllowed(
 ): boolean {
   const host = hostOfUrl(url);
   return host !== null && allowedSites.includes(host);
+}
+
+// Adds the host at the end unless it is already in the list.
+export function withSite(sites: readonly string[], host: string): string[] {
+  return sites.includes(host) ? [...sites] : [...sites, host];
+}
+
+export function withoutSite(sites: readonly string[], host: string): string[] {
+  return sites.filter((h) => h !== host);
 }
