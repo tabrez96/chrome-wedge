@@ -6,6 +6,7 @@ import {
   type TabStatus,
 } from "../core/messages";
 import { defaultSettings, migrate, type Settings } from "../core/settings";
+import { openWelcome } from "./install";
 
 export const PROTOCOL_VERSION = "1.3";
 export const SETTINGS_KEY = "settings";
@@ -66,6 +67,16 @@ export async function setFirstRunDone(): Promise<void> {
   await chrome.storage.local.set({
     [SETTINGS_KEY]: { ...current, firstRunDone: true },
   });
+}
+
+// Until S02's Got it is clicked, a successful switch-on shows S02 again.
+// Never fails: switch-on has already succeeded.
+async function welcomeIfFirstRun(tabId: number): Promise<void> {
+  try {
+    if (!(await readSettings()).firstRunDone) await openWelcome(tabId);
+  } catch {
+    // Opening the tab is best effort.
+  }
 }
 
 // One update at a time, so two tabs can't overwrite each other's host.
@@ -157,9 +168,9 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
       message: "The page navigated while switching on.",
     };
   }
-  if (current === host)
-    return { ok: true, status: { state: "attached", host } };
-  await writeTab(tabId, { state: "attached", host: current });
+  if (current !== host)
+    await writeTab(tabId, { state: "attached", host: current });
+  await welcomeIfFirstRun(tabId);
   return { ok: true, status: { state: "attached", host: current } };
 }
 

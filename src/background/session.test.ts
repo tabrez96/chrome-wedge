@@ -49,7 +49,11 @@ function makeFake() {
       local: area(),
       onChanged: { addListener: (f: Listener) => (l.changed = f) },
     },
-    tabs: { onRemoved: { addListener: (f: Listener) => (l.removed = f) } },
+    tabs: {
+      get: vi.fn(async (id: number) => ({ id, index: 2, windowId: 1 })),
+      create: vi.fn(async (..._a: unknown[]) => ({})),
+      onRemoved: { addListener: (f: Listener) => (l.removed = f) },
+    },
     debugger: {
       attach: vi.fn(async (..._a: unknown[]) => {}),
       detach: vi.fn(async (..._a: unknown[]) => {}),
@@ -60,6 +64,7 @@ function makeFake() {
     },
     runtime: {
       id: "ext",
+      getURL: (p: string) => `chrome-extension://ext/${p}`,
       onMessage: { addListener: (f: Listener) => (l.message = f) },
     },
   };
@@ -243,6 +248,50 @@ describe("switchOn", () => {
     expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
     expect(fake.storage.session.m.size).toBe(0);
     expect(fake.storage.local.m.size).toBe(0);
+  });
+});
+
+describe("switchOn welcome", () => {
+  const done = () =>
+    fake.storage.local.m.set("settings", { version: 1, firstRunDone: true });
+
+  it("opens welcome next to the tab while firstRunDone is false", async () => {
+    expect(await s.switchOn(7)).toEqual(ON);
+    expect(fake.tabs.create).toHaveBeenCalledTimes(1);
+    expect(fake.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://ext/welcome.html",
+      windowId: 1,
+      index: 3,
+      openerTabId: 7,
+    });
+  });
+
+  it("does not open welcome once firstRunDone is true", async () => {
+    done();
+    expect(await s.switchOn(7)).toEqual(ON);
+    expect(fake.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("does not open welcome when already attached", async () => {
+    fake.storage.session.m.set("tab:7", { state: "attached", host: HOST });
+    expect(await s.switchOn(7)).toEqual(ON);
+    expect(fake.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("does not open welcome when switch-on fails", async () => {
+    fake.debugger.attach.mockRejectedValueOnce(new Error("boom"));
+    expect((await s.switchOn(7)).ok).toBe(false);
+    fake.debugger.getTargets.mockResolvedValueOnce([
+      target("chrome://newtab/"),
+    ]);
+    expect((await s.switchOn(7)).ok).toBe(false);
+    expect(fake.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("a failure to open welcome does not block switch-on", async () => {
+    fake.tabs.create.mockRejectedValueOnce(new Error("no tab"));
+    expect(await s.switchOn(7)).toEqual(ON);
+    expect(tab()).toEqual({ state: "attached", host: HOST });
   });
 });
 

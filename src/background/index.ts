@@ -1,7 +1,8 @@
-// Service worker entry. Install handling is added in a later ticket.
+// Service worker entry.
+import { registerInstall } from "./install";
 import { registerScan } from "./scan";
 import { registerSession } from "./session";
 
+registerInstall();
 registerSession();
 registerScan();
-chrome.runtime.onInstalled.addListener(() => {});
