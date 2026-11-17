@@ -126,3 +126,80 @@
 .segmented button:focus-visible {
   outline-offset: -2px;
 }
+.site-add {
+  display: flex;
+  gap: 8px;
+}
+#site-host {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 15px;
+}
+#site-host[aria-invalid="true"] {
+  border-color: var(--error-text);
+}
+.secondary {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--border);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sites {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+.sites th {
+  text-align: left;
+  font-size: var(--text-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sites td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--row-divider);
+}
+.sites td:last-child {
+  text-align: right;
+}
+.site-host {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.link-danger {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--error-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.sites-empty {
+  margin: 16px 0 0;
+  padding: 18px 24px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-control-lg);
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

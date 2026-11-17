@@ -82,6 +82,33 @@
           chrome-wedge only types on these sites. Turn a site on from the popup,
           or add it here.
         </p>
+        <form id="site-form" class="site-add" novalidate>
+          <input
+            id="site-host"
+            type="text"
+            placeholder="e.g. localhost:3000"
+            aria-label="Site host"
+            aria-describedby="site-error"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="submit" class="secondary">Add site</button>
+        </form>
+        <p id="site-error" class="field-error" hidden>
+          Enter a host like localhost:3000 or pos.example.com
+        </p>
+        <table id="sites-table" class="sites" hidden>
+          <thead>
+            <tr>
+              <th scope="col">Site</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="sites-list"></tbody>
+        </table>
+        <p id="sites-empty" class="sites-empty" hidden>
+          No sites yet. Scans won't be typed anywhere until you add one.
+        </p>
       </section>
     </main>
   </body>

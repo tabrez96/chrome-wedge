@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { hostOfUrl, isAllowed, isValidHost, normaliseHost } from "./hosts";
+import {
+  hostOfUrl,
+  isAllowed,
+  isValidHost,
+  normaliseHost,
+  withSite,
+  withoutSite,
+} from "./hosts";
 
 describe("normaliseHost", () => {
   it.each([
@@ -12,6 +19,11 @@ describe("normaliseHost", () => {
     ["192.168.0.10:8080", "192.168.0.10:8080"],
     ["0.0.0.0", "0.0.0.0"],
     ["a-b.example.co.uk", "a-b.example.co.uk"],
+    ["https://a.com:443/x", "a.com"],
+    ["http://a.com:80", "a.com"],
+    ["https://a.com:8443", "a.com:8443"],
+    ["http://a.com:443", "a.com:443"],
+    ["a.com:443", "a.com:443"],
   ])("normalises %s", (input, expected) => {
     expect(normaliseHost(input)).toBe(expected);
     expect(isValidHost(input)).toBe(true);
@@ -72,5 +84,24 @@ describe("isAllowed", () => {
     ["chrome://newtab", false],
   ])("matches exact host[:port] only: %s", (url, expected) => {
     expect(isAllowed(url, sites)).toBe(expected);
+  });
+});
+
+describe("withSite", () => {
+  it("appends a new host and leaves an existing one", () => {
+    const sites = ["a.test"];
+    const added = withSite(sites, "b.test");
+    expect(added).toEqual(["a.test", "b.test"]);
+    expect(added).not.toBe(sites);
+    const same = withSite(sites, "a.test");
+    expect(same).toEqual(["a.test"]);
+    expect(same).not.toBe(sites);
+  });
+});
+
+describe("withoutSite", () => {
+  it("removes only that host", () => {
+    expect(withoutSite(["a.test", "b.test"], "a.test")).toEqual(["b.test"]);
+    expect(withoutSite(["a.test"], "c.test")).toEqual(["a.test"]);
   });
 });

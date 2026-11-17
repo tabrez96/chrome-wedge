@@ -1,4 +1,4 @@
-import { hostOfUrl } from "../core/hosts";
+import { hostOfUrl, withoutSite, withSite } from "../core/hosts";
 import {
   isPopupMessage,
   type ScanResult,
@@ -79,10 +79,14 @@ async function welcomeIfFirstRun(tabId: number): Promise<void> {
   }
 }
 
-// One update at a time, so two tabs can't overwrite each other's host.
+// One update at a time, so two tabs (or the settings page) can't overwrite each other's host.
 let queue: Promise<unknown> = Promise.resolve();
-const updateAllowedSites = (fn: (sites: string[]) => string[]) =>
-  (queue = queue.catch(() => {}).then(() => writeAllowedSites(fn)));
+export const updateAllowedSites = (
+  fn: (sites: string[]) => string[],
+): Promise<void> =>
+  (queue = queue
+    .catch(() => {})
+    .then(() => writeAllowedSites(fn))) as Promise<void>;
 
 export type TypingSettings = Pick<
   Settings,
@@ -151,9 +155,7 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
     await chrome.debugger.detach({ tabId }).catch(() => {});
     return { ok: false, error: "attach-failed", message: errorMessage(e) };
   }
-  await updateAllowedSites((sites) =>
-    sites.includes(host) ? sites : [...sites, host],
-  );
+  await updateAllowedSites((sites) => withSite(sites, host));
   await writeTab(tabId, { state: "attached", host });
   // A navigation before the entry was stored was missed by onDebuggerEvent.
   const current = await hostOfTab(tabId);
@@ -177,8 +179,7 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
 export async function switchOff(tabId: number): Promise<SessionReply> {
   const host = (await readTab(tabId))?.host ?? (await hostOfTab(tabId));
   await chrome.debugger.detach({ tabId }).catch(() => {});
-  if (host)
-    await updateAllowedSites((sites) => sites.filter((h) => h !== host));
+  if (host) await updateAllowedSites((sites) => withoutSite(sites, host));
   await clearTab(tabId);
   return { ok: true, status: { state: "off", host } };
 }
