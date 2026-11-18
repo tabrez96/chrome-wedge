@@ -12,6 +12,7 @@ import {
   type Settings,
 } from "../core/settings";
 import { openWelcome } from "./install";
+import { installShortcuts, removeShortcuts } from "./shortcuts";
 
 export const PROTOCOL_VERSION = "1.3";
 export const SETTINGS_KEY = "settings";
@@ -46,6 +47,7 @@ async function clearTab(tabId: number): Promise<void> {
 
 // Our own detach() does not fire onDetach, so the entry is cleared here.
 async function detachTab(tabId: number): Promise<void> {
+  await removeShortcuts(tabId);
   await chrome.debugger.detach({ tabId }).catch(() => {});
   await clearTab(tabId);
 }
@@ -169,7 +171,9 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
       { enabled: true },
     );
     await chrome.debugger.sendCommand({ tabId }, "Page.enable");
+    await installShortcuts(tabId);
   } catch (e) {
+    await removeShortcuts(tabId);
     await chrome.debugger.detach({ tabId }).catch(() => {});
     return { ok: false, error: "attach-failed", message: errorMessage(e) };
   }
@@ -196,6 +200,7 @@ export async function switchOn(tabId: number): Promise<SessionReply> {
 
 export async function switchOff(tabId: number): Promise<SessionReply> {
   const host = (await readTab(tabId))?.host ?? (await hostOfTab(tabId));
+  await removeShortcuts(tabId);
   await chrome.debugger.detach({ tabId }).catch(() => {});
   if (host) await updateAllowedSites((sites) => withoutSite(sites, host));
   await clearTab(tabId);

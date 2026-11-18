@@ -25,6 +25,10 @@ Set how scans are typed, which sites are allowed, and the saved codes
 ![S03 Settings](design/screens/S03-settings/screen.png)
 <!-- /about -->
 
+## Saved-code shortcuts
+
+On a switched-on page, Alt+1 … Alt+9 send the saved code with that shortcut into the focused field. Alt+Shift+1 … Alt+Shift+9 do the same, for Linux and other systems where the browser or the window manager takes Alt+digit. Tabs that are not switched on get no shortcut listener. Linux Alt+digit: not verified in the sandbox (no `xdotool`); needs a by-hand check on Linux.
+
 ## Development
 
 - Requirements: Node 22, Chrome 118+.
