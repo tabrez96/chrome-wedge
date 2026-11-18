@@ -32,6 +32,8 @@ async function setup(
     save,
     addSite: vi.fn(async () => {}),
     removeSite: vi.fn(async () => {}),
+    saveCodes: vi.fn(async () => {}),
+    newId: () => "new-id",
     onChange: (l) => (changed = l),
     ...extra,
   };
@@ -70,7 +72,9 @@ describe("settings page", () => {
     expect($("sites-card").querySelector("h2")!.textContent).toBe(
       "Allowed sites",
     );
-    expect(document.body.textContent).not.toContain("Saved codes");
+    expect($("saved-codes").querySelector("h2")!.textContent).toBe(
+      "Saved codes",
+    );
   });
 
   it("prefix change saves the clamped prefix", async () => {

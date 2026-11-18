@@ -150,12 +150,14 @@
   font-weight: 700;
   cursor: pointer;
 }
-.sites {
+.sites,
+.codes {
   width: 100%;
   border-collapse: collapse;
   margin-top: 16px;
 }
-.sites th {
+.sites th,
+.codes th {
   text-align: left;
   font-size: var(--text-label);
   font-weight: 700;
@@ -165,11 +167,13 @@
   padding: 8px;
   border-bottom: 1px solid var(--border);
 }
-.sites td {
+.sites td,
+.codes td {
   padding: 9px 8px;
   border-bottom: 1px solid var(--row-divider);
 }
-.sites td:last-child {
+.sites td:last-child,
+.codes td:last-child {
   text-align: right;
 }
 .site-host {
@@ -202,4 +206,83 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.primary {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.primary:hover {
+  background: var(--primary-hover);
+}
+.primary:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  cursor: default;
+}
+.primary.small {
+  height: 32px;
+  padding: 0 12px;
+}
+.code-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link + .link-danger {
+  margin-left: 16px;
+}
+.primary + .link {
+  margin-left: 12px;
+}
+.link-undo {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: underline;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.code-edit input,
+.code-edit select {
+  width: 100%;
+  height: 32px;
+  font-size: 14px;
+}
+.code-edit [aria-invalid="true"] {
+  border-color: var(--error-text);
 }
