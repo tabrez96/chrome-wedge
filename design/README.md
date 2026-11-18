@@ -8,6 +8,6 @@ Status: **draft** (UX not approved yet), **approved**, **building** (a ticket fo
 
 | ID | Screen | Status | Purpose | Tickets | Updated |
 | --- | --- | --- | --- | --- | --- |
-| S01 | [Popup](screens/S01-popup/screen.html) (+6 states) · [spec](screens/S01-popup/spec.md) | building | Send a scan (typed, dropped image or saved code) into the focused field of the current tab | T-98, T-99, T-100, T-103, T-150 | 2026-11-13 |
+| S01 | [Popup](screens/S01-popup/screen.html) (+6 states) · [spec](screens/S01-popup/spec.md) | built | Send a scan (typed, dropped image or saved code) into the focused field of the current tab | T-98, T-99, T-100, T-103, T-150 | 2026-11-13 |
 | S02 | [Welcome and debugging bar explanation](screens/S02-welcome/screen.html) · [spec](screens/S02-welcome/spec.md) | built | Explain, before the first scan, why Chrome shows a debugging bar and how to scan safely | T-98, T-101, T-149 | 2026-11-13 |
-| S03 | [Settings](screens/S03-settings/screen.html) (+1 states) · [spec](screens/S03-settings/spec.md) | building | Set how scans are typed, which sites are allowed, and the saved codes | T-97, T-98, T-100, T-102, T-103, T-150 | 2026-11-13 |
+| S03 | [Settings](screens/S03-settings/screen.html) (+1 states) · [spec](screens/S03-settings/spec.md) | built | Set how scans are typed, which sites are allowed, and the saved codes | T-97, T-98, T-100, T-102, T-103, T-150 | 2026-11-13 |

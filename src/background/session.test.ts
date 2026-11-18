@@ -1,3 +1,4 @@
+import { INSTALL_SCRIPT, REMOVE_SCRIPT } from "../core/shortcutListener";
 import * as s from "./session";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -57,7 +58,12 @@ function makeFake() {
     debugger: {
       attach: vi.fn(async (..._a: unknown[]) => {}),
       detach: vi.fn(async (..._a: unknown[]) => {}),
-      sendCommand: vi.fn(async (..._a: unknown[]) => {}),
+      sendCommand: vi.fn(async (...a: unknown[]): Promise<unknown> => {
+        if (a[1] === "Page.getFrameTree")
+          return { frameTree: { frame: { id: "F" } } };
+        if (a[1] === "Page.createIsolatedWorld")
+          return { executionContextId: 7 };
+      }),
       getTargets: vi.fn(async () => [target("http://wedge.test/")]),
       onDetach: { addListener: (f: Listener) => (l.detach = f) },
       onEvent: { addListener: (f: Listener) => (l.event = f) },
@@ -112,6 +118,51 @@ describe("switchOn", () => {
       { tabId: 7 },
       "Page.enable",
     );
+  });
+
+  it("installs the shortcut listener; a Runtime.addBinding failure detaches and reports attach-failed", async () => {
+    expect(await s.switchOn(7)).toEqual(ON);
+    expect(fake.debugger.sendCommand).toHaveBeenCalledWith(
+      { tabId: 7 },
+      "Runtime.addBinding",
+      { name: "__wedgeShortcut", executionContextName: "wedge" },
+    );
+    expect(fake.debugger.sendCommand).toHaveBeenCalledWith(
+      { tabId: 7 },
+      "Runtime.evaluate",
+      { expression: INSTALL_SCRIPT, contextId: 7 },
+    );
+    await s.switchOff(7);
+    fake.debugger.detach.mockClear();
+    fake.debugger.sendCommand.mockImplementation(async (...a: unknown[]) => {
+      if (a[1] === "Runtime.addBinding") throw new Error("binding");
+    });
+    expect(await s.switchOn(7)).toEqual({
+      ok: false,
+      error: "attach-failed",
+      message: "binding",
+    });
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+  });
+
+  it("removes the page listener before detaching when switch-on fails", async () => {
+    fake.debugger.sendCommand.mockImplementation(async (...a: unknown[]) => {
+      if (a[1] === "Page.getFrameTree") throw new Error("tree");
+    });
+    fake.debugger.sendCommand.mockClear();
+    expect((await s.switchOn(7)).ok).toBe(false);
+    const calls = fake.debugger.sendCommand.mock.calls;
+    const last = calls[calls.length - 1];
+    expect(last).toEqual([
+      { tabId: 7 },
+      "Runtime.evaluate",
+      { expression: REMOVE_SCRIPT },
+    ]);
+    expect(fake.debugger.detach).toHaveBeenCalledWith({ tabId: 7 });
+    const orders = fake.debugger.sendCommand.mock.invocationCallOrder;
+    const removed = orders[orders.length - 1]!;
+    const detached = fake.debugger.detach.mock.invocationCallOrder[0]!;
+    expect(removed).toBeLessThan(detached);
   });
 
   it("Page.enable failure reports attach-failed and stores nothing", async () => {
@@ -570,5 +621,19 @@ describe("updateSavedCodes", () => {
     expect(
       (settings().savedCodes as { id: string }[]).map((c) => c.id),
     ).toEqual(["1", "2"]);
+  });
+});
+
+describe("switchOff shortcuts", () => {
+  it("removes the listener before detaching", async () => {
+    await s.switchOn(7);
+    fake.debugger.sendCommand.mockClear();
+    await s.switchOff(7);
+    expect(fake.debugger.sendCommand.mock.calls[0]?.[1]).toBe(
+      "Runtime.evaluate",
+    );
+    const evaluated = fake.debugger.sendCommand.mock.invocationCallOrder[0]!;
+    const detached = fake.debugger.detach.mock.invocationCallOrder[0]!;
+    expect(evaluated).toBeLessThan(detached);
   });
 });
