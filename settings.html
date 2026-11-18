@@ -25,6 +25,7 @@
         role="status"
         aria-live="polite"
       ></span>
+      <button id="undo" type="button" class="link-undo" hidden>Undo</button>
     </header>
     <main class="grid">
       <section class="card" aria-labelledby="typing-title">
@@ -109,6 +110,33 @@
         <p id="sites-empty" class="sites-empty" hidden>
           No sites yet. Scans won't be typed anywhere until you add one.
         </p>
+      </section>
+      <section id="saved-codes" class="card wide" aria-labelledby="codes-title">
+        <div class="card-head">
+          <div>
+            <h2 id="codes-title">Saved codes</h2>
+            <p class="card-lead">
+              Scan these from the popup or with their shortcut while the page is
+              focused. Shortcuts Alt+1 to Alt+9.
+            </p>
+          </div>
+          <button id="add-code" type="button" class="primary">Add code</button>
+        </div>
+        <table id="codes-table" class="codes" hidden>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Code</th>
+              <th scope="col">Shortcut</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="codes-list"></tbody>
+        </table>
+        <p id="codes-empty" class="sites-empty" hidden>
+          No saved codes. Add the codes you scan often and give them a shortcut.
+        </p>
+        <p id="code-error" class="field-error" role="alert" hidden></p>
       </section>
     </main>
   </body>

@@ -554,3 +554,21 @@ describe("updateAllowedSites", () => {
     expect(settings().prefix).toBe("P");
   });
 });
+
+describe("updateSavedCodes", () => {
+  it("updateSavedCodes keeps an allowed site added meanwhile and applies queued updates in order", async () => {
+    fake.storage.local.m.set("settings", {
+      version: 1,
+      allowedSites: ["a.test"],
+    });
+    const code = (id: string) => ({ id, name: id, value: id, shortcut: null });
+    await Promise.all([
+      s.updateSavedCodes((c) => [...c, code("1")]),
+      s.updateSavedCodes((c) => [...c, code("2")]),
+    ]);
+    expect(settings().allowedSites).toEqual(["a.test"]);
+    expect(
+      (settings().savedCodes as { id: string }[]).map((c) => c.id),
+    ).toEqual(["1", "2"]);
+  });
+});

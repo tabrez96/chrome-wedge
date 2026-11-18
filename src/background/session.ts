@@ -5,7 +5,12 @@ import {
   type SessionReply,
   type TabStatus,
 } from "../core/messages";
-import { defaultSettings, migrate, type Settings } from "../core/settings";
+import {
+  defaultSettings,
+  migrate,
+  type SavedCode,
+  type Settings,
+} from "../core/settings";
 import { openWelcome } from "./install";
 
 export const PROTOCOL_VERSION = "1.3";
@@ -102,6 +107,19 @@ export const updateSettings = (patch: Partial<TypingSettings>): Promise<void> =>
       const current = await readSettings();
       await chrome.storage.local.set({
         [SETTINGS_KEY]: { ...current, ...patch },
+      });
+    })) as Promise<void>;
+
+// Reads the stored codes fresh, so a change from another settings tab isn't lost.
+export const updateSavedCodes = (
+  fn: (codes: SavedCode[]) => SavedCode[],
+): Promise<void> =>
+  (queue = queue
+    .catch(() => {})
+    .then(async () => {
+      const current = await readSettings();
+      await chrome.storage.local.set({
+        [SETTINGS_KEY]: { ...current, savedCodes: fn(current.savedCodes) },
       });
     })) as Promise<void>;
 

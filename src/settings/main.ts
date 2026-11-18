@@ -2,6 +2,7 @@ import {
   readSettings,
   SETTINGS_KEY,
   updateAllowedSites,
+  updateSavedCodes,
   updateSettings,
   type TypingSettings,
 } from "../background/session";
@@ -12,15 +13,19 @@ import {
   parseKeyDelay,
   SUFFIXES,
   type BarcodeFormat,
+  type SavedCode,
   type Settings,
   type Suffix,
 } from "../core/settings";
+import { initSavedCodes } from "./codes";
 
 export type SettingsApi = {
   load(): Promise<Settings>;
   save(patch: Partial<TypingSettings>): Promise<void>;
   addSite(host: string): Promise<void>;
   removeSite(host: string): Promise<void>;
+  saveCodes(fn: (codes: SavedCode[]) => SavedCode[]): Promise<void>;
+  newId(): string;
   onChange(listener: (s: Settings) => void): void;
 };
 
@@ -46,6 +51,7 @@ export async function initSettings(
   const sitesEmpty = byId<HTMLElement>("sites-empty");
 
   async function report(work: Promise<void>): Promise<void> {
+    byId("undo").hidden = true;
     try {
       await work;
       status.textContent = "✓ Changes saved";
@@ -56,6 +62,7 @@ export async function initSettings(
     }
   }
   const save = (patch: Partial<TypingSettings>) => report(api.save(patch));
+  const renderCodes = initSavedCodes(doc, api, report);
 
   function renderSites(sites: readonly string[]): void {
     sitesList.replaceChildren();
@@ -145,11 +152,15 @@ export async function initSettings(
       void save({ defaultFormat: format.value as BarcodeFormat });
   });
 
-  // Only the site list follows changes from elsewhere; typing fields stay as edited.
-  api.onChange((s) => renderSites(s.allowedSites));
+  // Sites and saved codes follow changes from elsewhere; typing fields stay as edited.
+  api.onChange((s) => {
+    renderSites(s.allowedSites);
+    renderCodes(s.savedCodes);
+  });
 
   const s = await api.load();
   renderSites(s.allowedSites);
+  renderCodes(s.savedCodes);
   prefix.value = s.prefix;
   delay.value = String(s.keyDelayMs);
   format.value = s.defaultFormat;
@@ -162,6 +173,8 @@ if (typeof chrome !== "undefined" && chrome.runtime?.id) {
     save: updateSettings,
     addSite: (h) => updateAllowedSites((sites) => withSite(sites, h)),
     removeSite: (h) => updateAllowedSites((sites) => withoutSite(sites, h)),
+    saveCodes: updateSavedCodes,
+    newId: () => crypto.randomUUID(),
     onChange: (listener) =>
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area === "local" && SETTINGS_KEY in changes)

@@ -117,3 +117,57 @@ test("a site switched on from the popup appears without a reload", async ({
     t.settings.getByRole("button", { name: "Remove wedge.test" }),
   ).toBeVisible();
 });
+
+test("a saved code added in settings shows in the popup", async ({
+  context,
+  extensionId,
+}) => {
+  const t = await setup(context, extensionId);
+  await t.openSettings();
+  await t.settings.getByRole("button", { name: "Add code" }).click();
+  await t.settings.getByLabel("Name").fill("Milk");
+  await t.settings.getByLabel("Code", { exact: true }).fill("4006381333931");
+  await t.settings.getByLabel("Shortcut").selectOption("1");
+  await t.settings.getByRole("button", { name: "Save" }).click();
+  await expect(t.settings.locator("#save-status")).toHaveText(
+    "✓ Changes saved",
+  );
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popup.getByText("Milk")).toBeVisible();
+  await expect(popup.getByText("Alt+1")).toBeVisible();
+});
+
+test("a tenth code is refused", async ({ context, extensionId }) => {
+  const t = await setup(context, extensionId);
+  await t.openSettings();
+  await t.settings.evaluate(() =>
+    chrome.storage.local.set({
+      settings: {
+        version: 1,
+        savedCodes: Array.from({ length: 9 }, (_, i) => ({
+          id: `id${i}`,
+          name: `Code ${i}`,
+          value: `v${i}`,
+          shortcut: null,
+        })),
+      },
+    }),
+  );
+  await t.settings.reload();
+  await t.settings.getByRole("button", { name: "Add code" }).click();
+  await expect(
+    t.settings.getByText(
+      "You can save up to 9 codes. Delete one to add another.",
+    ),
+  ).toBeVisible();
+  const count = await t.settings.evaluate(
+    async () =>
+      (
+        (await chrome.storage.local.get("settings")).settings as {
+          savedCodes: unknown[];
+        }
+      ).savedCodes.length,
+  );
+  expect(count).toBe(9);
+});
