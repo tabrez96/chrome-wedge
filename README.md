@@ -36,6 +36,7 @@ On a switched-on page, Alt+1 … Alt+9 send the saved code with that shortcut in
 - Build: `npm run build` (output in `dist/`), `npm run dev` (rebuild on change).
 - Load unpacked: open `chrome://extensions`, turn on Developer mode, choose Load unpacked, pick `dist/`. After a rebuild, press the reload icon on the extension card.
 - Checks: `npm run format:check`, `npm run typecheck`, `npm test` (unit tests with coverage; fails under 90% on `src/core/`), `npm run build && npm run e2e`. `npm run format` fixes formatting.
+- Secret scan: `betterleaks git --redact --verbose --log-opts="--full-history --all --diff-filter=tuxdb --diff-merges=first-parent" .` scans the full git history, including merge-commit patches (CI runs it on every pull request into `develop` with betterleaks 1.10.1, pinned in `.github/workflows/ci.yml`). Install the matching release binary from https://github.com/betterleaks/betterleaks/releases.
 - Test fixtures: `npm run fixtures` regenerates `test/fixtures/barcodes/` (barcode PNGs and `index.json`) with bwip-js; commit the output.
 - Icons: `npm run icons` regenerates `public/icons/` from `design/brand/mark.svg`.
 
