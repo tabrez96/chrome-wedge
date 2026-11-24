@@ -22,7 +22,7 @@ const sentReply = {
   value: "4006381333931",
   keys: 13,
   suffix: "enter",
-  label: "Item code",
+  fieldLabel: "Item code",
 };
 
 const pngPixels = (name: string) => {

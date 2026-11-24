@@ -3,6 +3,7 @@ import { JSDOM } from "jsdom";
 import {
   FALLBACK_LABEL,
   focusProbe,
+  releaseFocus,
   type FocusProbeResult,
 } from "./focusProbe";
 
@@ -266,7 +267,7 @@ describe("shadow roots and frames", () => {
     const frame = document.querySelector("iframe")!;
     Object.defineProperty(frame, "contentDocument", { get: () => null });
     stubActive(frame);
-    expect(focusProbe()).toStrictEqual(none);
+    expect(focusProbe()).toStrictEqual({ kind: "unreachable" });
   });
 
   it("cross-origin iframe (contentDocument throws)", () => {
@@ -278,7 +279,52 @@ describe("shadow roots and frames", () => {
       },
     });
     stubActive(frame);
-    expect(focusProbe()).toStrictEqual(none);
+    expect(focusProbe()).toStrictEqual({ kind: "unreachable" });
+  });
+});
+
+describe("releaseFocus", () => {
+  it("blurs a focused button", () => {
+    mount(`<button id="b">Go</button>`);
+    focus("#b");
+    releaseFocus();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("does nothing when nothing is focused", () => {
+    mount(`<p>x</p>`);
+    expect(() => releaseFocus()).not.toThrow();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("blurs a button inside a same-origin iframe and the iframe", () => {
+    mount(`<iframe></iframe>`);
+    const frame = document.querySelector("iframe")!;
+    const inner = frame.contentDocument!;
+    inner.body.innerHTML = `<button id="b">Go</button>`;
+    frame.focus();
+    inner.getElementById("b")!.focus();
+    releaseFocus();
+    expect(inner.activeElement).toBe(inner.body);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("blurs the iframe when its contentDocument throws", () => {
+    mount(`<iframe></iframe>`);
+    const frame = document.querySelector("iframe")!;
+    Object.defineProperty(frame, "contentDocument", {
+      get: () => {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    });
+    frame.focus();
+    stubActive(frame);
+    let blurred = false;
+    frame.blur = () => {
+      blurred = true;
+    };
+    expect(() => releaseFocus()).not.toThrow();
+    expect(blurred).toBe(true);
   });
 });
 

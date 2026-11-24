@@ -50,7 +50,9 @@ export function describeResult(r: ScanResult): ResultLine {
       return line(
         "success",
         `Scanned ${r.value}`,
-        `${keys}${plus} into “${r.label}”`,
+        r.fieldLabel === null
+          ? `${keys}${plus} into the page (no focused field)`
+          : `${keys}${plus} into “${r.fieldLabel}”`,
       );
     }
     case "refused":
@@ -62,8 +64,8 @@ export function describeResult(r: ScanResult): ResultLine {
     case "no-field":
       return line(
         "warning",
-        "No field is focused",
-        "Click the field you want to fill on the page, then scan again.",
+        "Not sent: that field is in a frame from another site",
+        "Click a field in the page itself, then scan again.",
       );
     case "detached":
       return line(

@@ -1,5 +1,8 @@
 export type FocusProbeResult =
-  { kind: "editable"; label: string } | { kind: "password" } | { kind: "none" };
+  | { kind: "editable"; label: string }
+  | { kind: "password" }
+  | { kind: "none" }
+  | { kind: "unreachable" };
 
 export const FALLBACK_LABEL = "the focused field";
 
@@ -18,7 +21,7 @@ export function focusProbe(): FocusProbeResult {
       } catch {
         inner = null;
       }
-      if (!inner) return { kind: "none" };
+      if (!inner) return { kind: "unreachable" };
       el = inner.activeElement;
       continue;
     }
@@ -77,4 +80,27 @@ export function focusProbe(): FocusProbeResult {
     clean(el.getAttribute("placeholder")) ||
     "the focused field";
   return { kind: "editable", label };
+}
+
+// Runs inside the page like focusProbe. Blurs the focused element (through
+// same-origin iframes and open shadow roots) so keys land on document.body.
+export function releaseFocus(): void {
+  const chain: HTMLElement[] = [];
+  let el: Element | null = document.activeElement;
+  for (let i = 0; el && i < 32; i++) {
+    if (el !== document.body) chain.push(el as HTMLElement);
+    let next: Element | null = null;
+    if (el.localName === "iframe" || el.localName === "frame") {
+      try {
+        next = (el as HTMLIFrameElement).contentDocument?.activeElement ?? null;
+      } catch {
+        next = null;
+      }
+    } else {
+      next = (el as HTMLElement).shadowRoot?.activeElement ?? null;
+    }
+    if (next && next.localName === "body") next = null;
+    el = next;
+  }
+  for (let i = chain.length - 1; i >= 0; i--) chain[i]!.blur();
 }
