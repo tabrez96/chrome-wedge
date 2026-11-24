@@ -14,6 +14,7 @@
 2. Click the chrome-wedge icon. The code box is ready for typing (S01).
 3. Type the code and press Enter or **Scan**. It's typed into the field, followed by Enter, and a green line confirms what was sent (S01).
 4. The popup stays open, so you can type the next code straight away.
+5. If your app listens for scans anywhere on the page rather than in a field, you don't need to click anything: scan, and the green line says it went "into the page (no focused field)" (S01).
 
 **Scan a barcode image**
 1. Click the field on the page, then open the popup (S01).
@@ -26,7 +27,8 @@
 2. Back on your switched-on page, click the field and press the shortcut, or open the popup and press **Scan** beside the saved code (S01). If Alt and a number doesn't work on your computer, use Alt+Shift and the number instead.
 
 **If a scan doesn't go through**
-- "No field is focused": click the field on the page first, then scan again (S01).
+- The scan went "into the page" but you wanted a field: click the field first, then scan again (S01).
+- "That field is in a frame from another site": chrome-wedge can't reach fields embedded from another site; click a field in the page itself (S01).
 - A password field is focused: chrome-wedge never types into those (S01).
 - The debugging bar was closed: press **Reconnect this tab** in the popup (S01).
 - The switch is off: turn it on for this site, or add the site under "Allowed sites" (S01, S03).
