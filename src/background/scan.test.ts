@@ -76,7 +76,7 @@ afterEach(() => {
 describe("scan", () => {
   it("sends keyDown with text and keyUp for each key, then Enter, and stores the result", async () => {
     const r = await scan(7, "ab");
-    expect(r).toMatchObject({ kind: "sent", keys: 2, label: "Code" });
+    expect(r).toMatchObject({ kind: "sent", keys: 2, fieldLabel: "Code" });
     expect(seq().join()).toBe(
       "keyDown a,keyUp a,keyDown b,keyUp b,keyDown Enter,keyUp Enter",
     );
@@ -84,10 +84,90 @@ describe("scan", () => {
     expect(stored().lastResult).toEqual(r);
   });
 
+  it("sends keys to the page when nothing editable is focused", async () => {
+    probe = { kind: "none" };
+    expect(await scan(7, "a")).toMatchObject({
+      kind: "sent",
+      fieldLabel: null,
+      keys: 1,
+    });
+    const calls = fake.debugger.sendCommand.mock.calls.map(
+      (c) => c as unknown as Cmd,
+    );
+    const blur = calls.findIndex((c) =>
+      String((c[2] as { expression?: string })?.expression).includes("blur"),
+    );
+    const first = calls.findIndex((c) => c[1] === "Input.dispatchKeyEvent");
+    expect(blur).toBeGreaterThan(-1);
+    expect(blur).toBeLessThan(first);
+  });
+
+  it("refuses when releasing focus lands it on a password field", async () => {
+    const values: unknown[] = [
+      host,
+      { kind: "none" },
+      undefined,
+      { kind: "password" },
+    ];
+    fake.debugger.sendCommand.mockImplementation(async (...a: unknown[]) => {
+      const [, method] = a as Cmd;
+      return method === "Runtime.evaluate"
+        ? { result: { value: values.shift() } }
+        : {};
+    });
+    expect(await scan(7, "a")).toEqual({ kind: "refused" });
+    expect(dispatched()).toEqual([]);
+  });
+
+  it("returns no-field when releasing focus lands it in a cross-origin frame", async () => {
+    const values: unknown[] = [
+      host,
+      { kind: "none" },
+      undefined,
+      { kind: "unreachable" },
+    ];
+    fake.debugger.sendCommand.mockImplementation(async (...a: unknown[]) => {
+      const [, method] = a as Cmd;
+      return method === "Runtime.evaluate"
+        ? { result: { value: values.shift() } }
+        : {};
+    });
+    expect(await scan(7, "a")).toEqual({ kind: "no-field" });
+    expect(dispatched()).toEqual([]);
+  });
+
+  it("reports the field when releasing focus lands it in an editable field", async () => {
+    const values: unknown[] = [
+      host,
+      { kind: "none" },
+      undefined,
+      { kind: "editable", label: "Code" },
+    ];
+    fake.debugger.sendCommand.mockImplementation(async (...a: unknown[]) => {
+      const [, method] = a as Cmd;
+      return method === "Runtime.evaluate"
+        ? { result: { value: values.shift() } }
+        : {};
+    });
+    expect(await scan(7, "a")).toMatchObject({
+      kind: "sent",
+      fieldLabel: "Code",
+    });
+    expect(dispatched().length).toBeGreaterThan(0);
+  });
+
+  it("does not release focus when a field is focused", async () => {
+    await scan(7, "a");
+    const exprs = fake.debugger.sendCommand.mock.calls.map((c) =>
+      String(((c as unknown as Cmd)[2] as { expression?: string })?.expression),
+    );
+    expect(exprs.some((e) => e.includes("blur"))).toBe(false);
+  });
+
   it("returns refused, no-field or invalid without typing", async () => {
     probe = { kind: "password" };
     expect(await scan(7, "a")).toEqual({ kind: "refused" });
-    probe = { kind: "none" };
+    probe = { kind: "unreachable" };
     expect(await scan(7, "a")).toEqual({ kind: "no-field" });
     probe = undefined;
     expect(await scan(7, "a")).toEqual({ kind: "no-field" });

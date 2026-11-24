@@ -17,9 +17,15 @@ export type PopupMessage =
 
 // Reply to "scan" (handled by src/background/scan.ts). Shared by the popup and the worker.
 export type ScanResult =
-  | { kind: "sent"; value: string; keys: number; suffix: Suffix; label: string }
+  | {
+      kind: "sent";
+      value: string;
+      keys: number;
+      suffix: Suffix;
+      fieldLabel: string | null;
+    }
   | { kind: "refused" } // focused field is a password field
-  | { kind: "no-field" }
+  | { kind: "no-field" } // focus is inside a cross-origin iframe
   | { kind: "site-off" } // tab not switched on, or its current host is not allowed
   | { kind: "detached" }
   | { kind: "invalid"; error: ScanValueError }

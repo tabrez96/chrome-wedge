@@ -11,7 +11,12 @@ test.beforeEach(async ({ context }) => {
   );
 });
 
-type Key = { isTrusted: boolean; key: string; value: string };
+type Key = {
+  isTrusted: boolean;
+  key: string;
+  value: string;
+  target: string;
+};
 const keys = (p: Page) =>
   p.evaluate(() => (window as unknown as { keys: Key[] }).keys);
 const names = async (p: Page) => (await keys(p)).map((k) => k.key);
@@ -72,7 +77,7 @@ test("typed scan arrives trusted and ends with Enter; the none suffix sends no f
     value: "AB-12",
     keys: 5,
     suffix: "enter",
-    label: "Code",
+    fieldLabel: "Code",
   });
   expect(await names(t.page)).toEqual(["A", "B", "-", "1", "2", "Enter"]);
   expect((await keys(t.page)).every((k) => k.isTrusted)).toBe(true);
@@ -104,16 +109,59 @@ test("a focused password field is refused and stays empty", async ({
   expect(await t.page.inputValue("#pw")).toBe("");
 });
 
-test("nothing focused returns no-field", async ({ context, extensionId }) => {
+test("with nothing focused a document listener gets trusted keys and the result says the page", async ({
+  context,
+  extensionId,
+}) => {
   const t = await setup(context, extensionId);
   await t.page.bringToFront();
   await t.page.evaluate(() =>
     (document.activeElement as HTMLElement | null)?.blur(),
   );
+  expect(await t.send({ type: "scan", tabId: t.pageId, value: "AB1" })).toEqual(
+    { kind: "sent", value: "AB1", keys: 3, suffix: "enter", fieldLabel: null },
+  );
+  expect(await names(t.page)).toEqual(["A", "B", "1", "Enter"]);
+  const got = await keys(t.page);
+  expect(got.every((k) => k.isTrusted && k.target === "body")).toBe(true);
+  expect(await t.page.inputValue("#code")).toBe("");
+});
+
+test("a focused button is released and not clicked", async ({
+  context,
+  extensionId,
+}) => {
+  const t = await setup(context, extensionId);
+  expect(await t.scan("9", "#go")).toMatchObject({
+    kind: "sent",
+    fieldLabel: null,
+  });
+  const got = await keys(t.page);
+  expect(got.length).toBeGreaterThan(0);
+  expect(got.every((k) => k.target === "body")).toBe(true);
+  expect(await t.page.evaluate(() => (window as any).clicks)).toBe(0);
+});
+
+test("a field inside a cross-origin frame gives no-field", async ({
+  context,
+  extensionId,
+}) => {
+  const t = await setup(context, extensionId);
+  await t.page.bringToFront();
+  await t.page.evaluate((src) => {
+    const f = document.createElement("iframe");
+    f.src = src;
+    document.body.append(f);
+  }, OTHER);
+  await expect.poll(() => t.page.frame({ url: OTHER })).not.toBeNull();
+  const frame = t.page.frame({ url: OTHER })!;
+  await frame.waitForSelector("#code");
+  await t.page.frameLocator("iframe").locator("#code").focus();
   expect(await t.send({ type: "scan", tabId: t.pageId, value: "1" })).toEqual({
     kind: "no-field",
   });
   expect(await keys(t.page)).toEqual([]);
+  expect(await frame.evaluate(() => (window as any).keys)).toEqual([]);
 });
 
 test("a tab that is not switched on receives nothing", async ({

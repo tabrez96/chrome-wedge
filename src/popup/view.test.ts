@@ -33,7 +33,7 @@ const sent = {
   value: "5012345678900",
   keys: 13,
   suffix: "enter",
-  label: "Item code",
+  fieldLabel: "Item code",
 } as const;
 
 describe("describeResult", () => {
@@ -44,6 +44,15 @@ describe("describeResult", () => {
       detail: "13 keys + Enter into “Item code”",
       reconnect: false,
     });
+  });
+  it("says the page when nothing was focused", () => {
+    const page = { ...sent, keys: 2, fieldLabel: null };
+    const r = describeResult(page);
+    expect(r.tone).toBe("success");
+    expect(r.detail).toBe("2 keys + Enter into the page (no focused field)");
+    expect(describeResult({ ...page, suffix: "none" }).detail).toBe(
+      "2 keys into the page (no focused field)",
+    );
   });
   it.each([
     ["tab", 13, "13 keys + Tab into “Item code”"],
@@ -63,8 +72,8 @@ describe("describeResult", () => {
     [
       { kind: "no-field" },
       "warning",
-      "No field is focused",
-      "Click the field you want to fill on the page, then scan again.",
+      "Not sent: that field is in a frame from another site",
+      "Click a field in the page itself, then scan again.",
       false,
     ],
     [
@@ -210,7 +219,7 @@ describe("render", () => {
   it("never uses innerHTML for page text", () => {
     render(document, {
       ...base,
-      result: describeResult({ ...sent, label: "<b>x</b>" }),
+      result: describeResult({ ...sent, fieldLabel: "<b>x</b>" }),
     });
     expect(q(".result-detail").querySelector("b")).toBeNull();
   });

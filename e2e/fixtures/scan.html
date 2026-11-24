@@ -3,7 +3,12 @@
 <label>Code <input id="code" /></label>
 <input id="next" aria-label="Next" />
 <input id="pw" type="password" aria-label="Password" />
+<button id="go" type="button">Go</button>
 <script>
+  window.clicks = 0;
+  document
+    .getElementById("go")
+    .addEventListener("click", () => window.clicks++);
   window.keys = [];
   document.addEventListener(
     "keydown",
@@ -11,6 +16,7 @@
       const t = e.target;
       window.keys.push({
         isTrusted: e.isTrusted,
+        target: t.localName,
         key: e.key,
         value: "value" in t ? t.value : "",
       });
