@@ -2,7 +2,7 @@
 
 ## Users and primary jobs
 Developers and QA testing barcode-driven web apps (point of sale, warehouse, inventory) without a hardware scanner.
-1. Send a code into the focused field as real keystrokes plus Enter, as a keyboard-wedge scanner would.
+1. Send a code into the focused field (or the page, when nothing is focused) as real keystrokes plus Enter, as a keyboard-wedge scanner would.
 2. Turn a barcode image (label photo, test fixture) into a scan.
 3. Re-send the same handful of test codes quickly.
 
@@ -15,11 +15,12 @@ Developers and QA testing barcode-driven web apps (point of sale, warehouse, inv
 1. **First scan**: install → S02 opens → Got it → on the test site, open S01 → switch on (site allowed, debugger attaches, Chrome's bar appears) → click the field on the page → reopen S01, type a code, Enter → result line confirms.
 2. **Image scan**: S01 → drop image → decoded value fills the input (S01 image-decoded) → Scan. Unreadable image shows S01 unreadable.
 3. **Saved code**: S01 → Scan beside a saved code, or press its shortcut on the page. Manage codes in S03.
-4. **Blocked scan**: password field focused → S01 refused; nothing focused → S01 no-field; site off → S01 site-off (controls disabled).
-5. **Bar closed**: user closes Chrome's debugging bar → S01 detached → Reconnect this tab.
-6. **Settings**: S01 gear → S03; changes save immediately.
+4. **Nothing focused**: on a switched-on site with no field focused, S01 → Scan → the keys go to the page itself, where app-wide scanner listeners pick them up → S01 page ("into the page (no focused field)").
+5. **Blocked scan**: password field focused → S01 refused; focused field inside a frame from another site → S01 no-field; site off → S01 site-off (controls disabled).
+6. **Bar closed**: user closes Chrome's debugging bar → S01 detached → Reconnect this tab.
+7. **Settings**: S01 gear → S03; changes save immediately.
 
-Rules: a scan is only sent to the focused editable element of the tab the user switched on, on an allowed site, and never to `input[type=password]`. Nothing is sent from an image until the user presses Scan.
+Rules: a scan is only sent to the tab the user switched on, on an allowed site: into the focused editable element, or, when nothing editable is focused, to the page itself (`document.body`, so keys bubble to `document` and `window`). It is never sent when `input[type=password]` is focused, and not when focus is inside a cross-origin iframe (reported as no field). Nothing is sent from an image until the user presses Scan.
 
 ## Design system
 **Theme**: dark only. Every screen (popup, welcome, settings) uses the same dark palette; it sits naturally beside Chrome's dark toolbar and keeps the red cursor as the one bright accent. Buttons are light, not red, so red never competes with the mark or reads as an error.
@@ -38,7 +39,7 @@ Rules: a scan is only sent to the focused editable element of the tab the user s
 | primary | #E8ECF5 fill, #0E1426 text (15:1); hover #FFFFFF | primary buttons |
 | focus | #FF6B5E | 2px focus ring |
 | success | #6EE0A6 on #0F2E22 (edge #1F5A3F) | sent, site on; switch on #23A86A |
-| warning | #F5C46B on #33250D | no field, detached |
+| warning | #F5C46B on #33250D | no field (cross-origin frame), detached |
 | error | #FF9A9C on #3A1619 | refused, unreadable, Remove/Delete links |
 | disabled | #6B7591 text on #2A3552 (primary button) | site off |
 
